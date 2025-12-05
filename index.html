@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大阪畢旅記帳</title>
     
-    <!-- PWA 設定 (讓手機可以加入主畫面) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#fff1f2">
+    <meta name="apple-mobile-web-app-title" content="大阪畢旅">
     <link rel="apple-touch-icon" href="https://placehold.co/180x180/ec4899/ffffff.png?text=旅&font=roboto">
     <link rel="icon" type="image/png" href="https://placehold.co/192x192/ec4899/ffffff.png?text=旅&font=roboto">
 
@@ -25,8 +24,6 @@
         min-height: 100vh;
         -webkit-tap-highlight-color: transparent; 
         color: #475569;
-        /* 防止 iOS 下拉重新整理 */
-        overscroll-behavior-y: none;
       }
       ::-webkit-scrollbar { width: 0px; background: transparent; }
       
@@ -47,6 +44,7 @@
   </head>
   <body>
     <div id="app" class="max-w-md mx-auto min-h-screen pb-28 relative">
+      
       <!-- Loading -->
       <div v-if="isLoading" class="loading-overlay">
         <div class="relative">
@@ -73,6 +71,7 @@
 
       <!-- 內容區 -->
       <div class="p-5 space-y-5">
+        
         <div v-if="loadError" class="bg-red-50 border-2 border-red-200 p-4 rounded-2xl shadow-sm animate-pulse">
            <p class="text-xs text-red-600 font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> {{ loadError }}</p>
            <button @click="loadData" class="mt-2 text-xs bg-white border border-red-200 text-red-500 px-3 py-1 rounded-full font-bold shadow-sm">重試連線</button>
@@ -242,7 +241,8 @@
             <div class="relative -mt-20 mb-4 z-10">
               <div class="w-28 h-28 mx-auto rounded-full bg-white p-1.5 shadow-xl relative group">
                 <div class="w-full h-full rounded-full overflow-hidden bg-gray-100 relative">
-                  <img v-if="myInfo && myInfo.photo && !imgError" :key="myIdentity" :src="myInfo.photo" @error="handleImgError" class="w-full h-full object-cover">
+                  <!-- 關鍵修正：加入 referrerpolicy="no-referrer" 解決 Postimages 顯示問題 -->
+                  <img v-if="myInfo && myInfo.photo && !imgError" :key="myIdentity" :src="myInfo.photo" referrerpolicy="no-referrer" @error="handleImgError" class="w-full h-full object-cover">
                   <div v-else class="w-full h-full flex items-center justify-center text-gray-300 text-4xl"><i class="fas fa-user"></i></div>
                   <div @click="changePhoto" class="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity backdrop-blur-[2px]">
                     <i class="fas fa-camera"></i>
@@ -289,7 +289,7 @@
                   <div><div class="text-sm font-bold text-gray-800 line-clamp-1">{{ exp.item }}</div><div class="text-[10px] text-gray-400">{{ exp.payer }} 付款</div></div>
                 </div>
                 <div class="text-right">
-                  <div class="font-bold text-pink-500 font-mono">-{{ Math.round(exp.amount / exp.beneficiaries.length).toLocaleString() }}</div>
+                  <div class="font-bold text-pink-500 font-mono">{{ Math.round(exp.amount / exp.beneficiaries.length).toLocaleString() }}</div>
                   <div class="text-[10px] text-gray-300">總價 {{ Math.round(exp.amount).toLocaleString() }}</div>
                 </div>
               </div>
@@ -343,40 +343,41 @@
     </div>
 
     <script>
-      // 🔥 您的 API 網址填在這裡
-      const API_URL = "https://script.google.com/macros/s/AKfycbxsjTTaG_pEm6M0udKuN5Lq-XmfKR4xHQH3xaIIA_UqICbyQ8IwEwKi2L8QM7xvCp1E0w/exec"; 
-
       const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
       createApp({
         setup() {
           const currentTab = ref('record');
           const isLoading = ref(false);
           const loadError = ref('');
-          const users = ref([]); const expenses = ref([]); const filterText = ref('');
-          const isJPY = ref(false); const exchangeRate = ref(0.22);
+          const users = ref([]); 
+          const expenses = ref([]);
+          const filterText = ref('');
+          const isJPY = ref(false);
+          const exchangeRate = ref(0.22);
           const myIdentity = ref(localStorage.getItem('myIdentity') || '');
           const imgError = ref(false);
 
-          // API 請求封裝
-          const apiRequest = async (action, data = null) => {
-            if (!API_URL.includes("exec")) throw new Error("請先設定正確的 API_URL");
-            if (data) {
-              await fetch(API_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action, ...data })
-              });
-              return { success: true };
-            } else {
-              const response = await fetch(`${API_URL}?action=${action}`);
-              return await response.json();
-            }
+          const runGAS = (funcName, args = []) => {
+            return new Promise((resolve, reject) => {
+              google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[funcName](...args);
+            });
           };
 
-          const myInfo = computed(() => !myIdentity.value ? null : users.value.find(u => u.name === myIdentity.value) || null);
-          watch(myIdentity, () => { imgError.value = false; });
-          const handleImgError = () => { imgError.value = true; };
+          const myInfo = computed(() => {
+            if(!myIdentity.value) return null;
+            return users.value.find(u => u.name === myIdentity.value) || null;
+          });
+
+          watch(myIdentity, () => {
+            imgError.value = false;
+          });
+
+          const handleImgError = () => {
+            imgError.value = true;
+            if (myInfo.value && myInfo.value.photo) {
+                console.log('Image failed to load:', myInfo.value.photo);
+            }
+          };
 
           const form = reactive({ date: new Date().toISOString().split('T')[0], payer: '', item: '', unitPrice: '', quantity: 1, beneficiaries: [], note: '' });
           const showEditModal = ref(false);
@@ -387,31 +388,23 @@
             return isJPY.value ? Math.round(rawTotal * exchangeRate.value) : Math.round(rawTotal);
           });
 
-          // 讀取匯率和資料
-          const fetchRate = async () => { 
-             const res = await apiRequest('getInitData'); 
-             if(res.success) exchangeRate.value = res.rate; 
-          };
+          const fetchRate = () => { runGAS('getExchangeRate').then(r => { exchangeRate.value = r; }); };
 
           const loadData = async () => {
-            isLoading.value = true; loadError.value = '';
+            isLoading.value = true;
+            loadError.value = '';
             try {
-              const res = await apiRequest('getInitData');
-              if (res.success) {
-                exchangeRate.value = res.rate;
-                users.value = res.users;
-                if(!form.payer && res.users.length>0) form.payer = res.users[0].name;
-                if(form.beneficiaries.length===0) form.beneficiaries = res.users.map(x => x.name);
-                expenses.value = res.expenses.filter(item => item.item && String(item.item).trim() !== "");
-                calculateSettlement();
-              } else {
-                throw new Error(res.message || "載入失敗");
-              }
-            } catch (err) { loadError.value = err.message; console.error(err); } 
-            finally { isLoading.value = false; }
+              const [rate, u, e] = await Promise.all([runGAS('getExchangeRate'), runGAS('getUserList'), runGAS('getExpensesData')]);
+              exchangeRate.value = rate; users.value = u;
+              if(!form.payer && u.length>0) form.payer = u[0].name;
+              if(form.beneficiaries.length===0) form.beneficiaries = u.map(x => x.name);
+              // Safe filtering for expenses (removing empty rows)
+              expenses.value = e.filter(item => item.item && String(item.item).trim() !== "");
+              calculateSettlement();
+            } catch (err) { loadError.value = err.message; } finally { isLoading.value = false; }
           };
 
-          const submit = async () => {
+          const submit = () => {
             if(!form.item || !form.unitPrice || !form.payer || form.beneficiaries.length === 0) { Swal.fire({icon: 'warning', title: '等等！', text: '資料不完整', confirmButtonColor: '#ec4899'}); return; }
             isLoading.value = true;
             let finalPrice = form.unitPrice; let finalNote = form.note;
@@ -419,54 +412,58 @@
               finalPrice = Math.round(displayTotalTWD.value / form.quantity);
               finalNote = (finalNote ? finalNote + ' ' : '') + `[JP¥${(form.unitPrice * form.quantity).toLocaleString()} @ ${exchangeRate.value}]`;
             }
-            const payload = { data: { date: form.date, payer: form.payer, item: form.item, unitPrice: finalPrice, quantity: form.quantity, beneficiaries: [...form.beneficiaries], note: finalNote } };
-            
-            try {
-              await apiRequest('addExpense', payload);
-              Swal.fire({icon:'success', title:'已記帳', timer:1000, showConfirmButton:false}); 
-              loadData(); form.item = ''; form.unitPrice = ''; form.quantity = 1; form.note = '';
-            } catch(e) {
-              isLoading.value = false; Swal.fire('錯誤', e.message, 'error');
-            }
+            const payload = { date: form.date, payer: form.payer, item: form.item, unitPrice: finalPrice, quantity: form.quantity, beneficiaries: [...form.beneficiaries], note: finalNote };
+            runGAS('addExpense', [payload]).then(res => {
+              if(res.success) { Swal.fire({icon:'success', title:'已記帳', timer:1000, showConfirmButton:false}); loadData(); form.item = ''; form.unitPrice = ''; form.quantity = 1; form.note = ''; }
+              else { isLoading.value = false; Swal.fire('錯誤', res.message, 'error'); }
+            }).catch(e => { isLoading.value = false; Swal.fire('錯誤', e.message, 'error'); });
           };
 
-          const openEditModal = (exp) => { Object.assign(editForm, { rowId: exp.rowId, date: exp.date, payer: exp.payer, item: exp.item, totalAmount: exp.amount, beneficiaries: [...exp.beneficiaries], note: exp.note }); showEditModal.value = true; };
+          const openEditModal = (exp) => {
+            Object.assign(editForm, { rowId: exp.rowId, date: exp.date, payer: exp.payer, item: exp.item, totalAmount: exp.amount, beneficiaries: [...exp.beneficiaries], note: exp.note });
+            showEditModal.value = true;
+          };
           const toggleEditBen = (u) => { const i = editForm.beneficiaries.indexOf(u); i===-1?editForm.beneficiaries.push(u):editForm.beneficiaries.splice(i,1); };
-          
-          const saveEdit = async () => { 
-            isLoading.value = true; 
-            try {
-              await apiRequest('editExpense', { data: {...editForm, unitPrice: editForm.totalAmount, quantity: 1} });
-              isLoading.value = false; showEditModal.value = false; loadData();
-            } catch(e) { isLoading.value = false; Swal.fire('失敗', e.message, 'error'); }
+          const saveEdit = () => {
+            isLoading.value = true;
+            runGAS('editExpense', [{...editForm, unitPrice: editForm.totalAmount, quantity: 1}]).then(res => {
+              isLoading.value = false; showEditModal.value = false; if(res.success) loadData(); else Swal.fire('失敗', res.message, 'error');
+            });
           };
-          
-          const deleteItem = async (item) => { 
-            const res = await Swal.fire({title: '確定刪除?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: '刪除'});
-            if(res.isConfirmed) { 
-              isLoading.value = true; 
-              try {
-                await apiRequest('deleteExpense', { rowId: item.rowId });
-                loadData(); showEditModal.value = false;
-              } catch(e) { isLoading.value = false; }
-            } 
+          const deleteItem = (item) => {
+            Swal.fire({title: '確定刪除?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: '刪除'}).then(res => {
+              if(res.isConfirmed) { isLoading.value = true; runGAS('deleteExpense', [item.rowId]).then(r => { if(r.success) { loadData(); showEditModal.value = false; }}); }
+            });
           };
-          
+
           const saveIdentity = () => { localStorage.setItem('myIdentity', myIdentity.value); calculateSettlement(); };
           
           const changePhoto = async () => {
-            const { value: url } = await Swal.fire({ title: '設定頭貼', input: 'text', inputLabel: '請貼上圖片網址', inputPlaceholder: 'https://...', showCancelButton: true, confirmButtonText: '儲存' });
+            const { value: url } = await Swal.fire({
+              title: '設定頭貼',
+              input: 'text',
+              inputLabel: '請貼上圖片網址', // Modified text
+              inputPlaceholder: 'https://...',
+              showCancelButton: true,
+              confirmButtonText: '儲存',
+              // footer removed
+            });
+
             if (url) {
               if (!myIdentity.value) { Swal.fire('請先選擇身分', '', 'warning'); return; }
               isLoading.value = true;
-              try {
-                await apiRequest('updateUserPhoto', { userName: myIdentity.value, photoUrl: url });
-                Swal.fire({icon:'success', title:'頭貼已更新', timer:1500, showConfirmButton:false}); 
-                loadData();
-              } catch(e) { isLoading.value = false; Swal.fire('失敗', e.message, 'error'); }
+              runGAS('updateUserPhoto', [myIdentity.value, url]).then(res => {
+                if(res.success) {
+                  Swal.fire({icon:'success', title:'頭貼已更新', timer:1500, showConfirmButton:false});
+                  loadData(); // 重新讀取確保同步
+                } else {
+                  isLoading.value = false; Swal.fire('失敗', res.message, 'error');
+                }
+              });
             }
           };
 
+          // 結算邏輯
           const totalTrip = ref(0); const paidMap = ref({}); const shouldPayMap = ref({}); const settlements = ref([]);
           const calculateSettlement = () => {
             let paid={}, should={}, total=0;
@@ -492,7 +489,7 @@
           const myExpenses = computed(() => !myIdentity.value ? [] : expenses.value.filter(e => e.beneficiaries.includes(myIdentity.value)));
           const filteredExpenses = computed(() => {
             let res = expenses.value;
-            if(filterText.value) { const t=filterText.value.toLowerCase(); res=res.filter(e=>e.item && String(e.item).toLowerCase().includes(t)||e.payer.includes(t)); }
+            if(filterText.value) { const t=filterText.value.toLowerCase(); res=res.filter(e=>e.item.toLowerCase().includes(t)||e.payer.includes(t)); }
             return res.sort((a,b) => new Date(b.date)-new Date(a.date) || b.rowId-a.rowId);
           });
           
