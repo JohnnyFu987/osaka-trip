@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>大阪畢旅記帳</title>
+    
+    <!-- PWA 設定 (讓手機可以加入主畫面) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#fff1f2">
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/ec4899/ffffff.png?text=旅&font=roboto">
+    <link rel="icon" type="image/png" href="https://placehold.co/192x192/ec4899/ffffff.png?text=旅&font=roboto">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+      
+      body { 
+        font-family: 'M PLUS Rounded 1c', 'Noto Sans TC', sans-serif; 
+        background: linear-gradient(135deg, #fff1f2 0%, #e0f2fe 100%);
+        min-height: 100vh;
+        -webkit-tap-highlight-color: transparent; 
+        color: #475569;
+        /* 防止 iOS 下拉重新整理 */
+        overscroll-behavior-y: none;
+      }
+      ::-webkit-scrollbar { width: 0px; background: transparent; }
+      
+      .loading-overlay { 
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(255,255,255,0.8); backdrop-filter: blur(5px);
+        display: flex; justify-content: center; align-items: center; z-index: 999; flex-direction: column; 
+      }
+      .toggle-checkbox:checked { right: 0; border-color: #f472b6; }
+      .toggle-checkbox:checked + .toggle-label { background-color: #f472b6; }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 4px 15px rgba(244, 114, 182, 0.15); backdrop-filter: blur(10px);
+      }
+      .pop-btn { transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+      .pop-btn:active { transform: scale(0.95); }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="max-w-md mx-auto min-h-screen pb-28 relative">
+      <!-- Loading -->
+      <div v-if="isLoading" class="loading-overlay">
+        <div class="relative">
+           <i class="fas fa-plane fa-bounce text-5xl text-pink-400 mb-4 drop-shadow-lg"></i>
+           <i class="fas fa-cloud text-blue-200 absolute -top-2 -right-6 text-2xl animate-pulse"></i>
+        </div>
+        <span class="text-pink-500 font-bold text-lg tracking-widest mt-2">OSAKA TRIP</span>
+        <span class="text-gray-400 text-xs">資料同步中...</span>
+      </div>
+
+      <!-- 標題列 -->
+      <div class="sticky top-0 bg-white/90 backdrop-blur-md shadow-sm z-40 pt-10 pb-4 px-5 rounded-b-3xl">
+        <h1 class="text-2xl font-bold text-gray-800 flex justify-center items-center gap-2">
+          <span class="text-pink-500"><i class="fas fa-torii-gate"></i></span>
+          <span>大阪畢業旅行</span>
+          <span class="text-blue-400"><i class="fas fa-paper-plane text-sm"></i></span>
+        </h1>
+        <div class="mt-4 bg-gray-100/80 p-1.5 rounded-2xl flex shadow-inner">
+          <button @click="currentTab='record'" :class="currentTab==='record'?'bg-white text-pink-500 shadow-md transform scale-100':'text-gray-400 scale-95 hover:text-gray-600'" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5"><i class="fas fa-pen-fancy"></i> 記帳</button>
+          <button @click="currentTab='settlement';calculateSettlement()" :class="currentTab==='settlement'?'bg-white text-blue-500 shadow-md transform scale-100':'text-gray-400 scale-95 hover:text-gray-600'" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5"><i class="fas fa-calculator"></i> 結算</button>
+          <button @click="currentTab='personal'" :class="currentTab==='personal'?'bg-white text-yellow-500 shadow-md transform scale-100':'text-gray-400 scale-95 hover:text-gray-600'" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5"><i class="fas fa-user-astronaut"></i> 個人</button>
+        </div>
+      </div>
+
+      <!-- 內容區 -->
+      <div class="p-5 space-y-5">
+        <div v-if="loadError" class="bg-red-50 border-2 border-red-200 p-4 rounded-2xl shadow-sm animate-pulse">
+           <p class="text-xs text-red-600 font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> {{ loadError }}</p>
+           <button @click="loadData" class="mt-2 text-xs bg-white border border-red-200 text-red-500 px-3 py-1 rounded-full font-bold shadow-sm">重試連線</button>
+        </div>
+
+        <!-- TAB 1: 記帳 -->
+        <div v-if="currentTab === 'record'" class="space-y-5">
+          <div class="glass-card rounded-3xl p-5 relative overflow-hidden">
+             <div class="absolute -top-10 -right-10 w-32 h-32 bg-pink-100 rounded-full opacity-50 pointer-events-none"></div>
+             <div class="absolute -bottom-10 -left-10 w-24 h-24 bg-blue-100 rounded-full opacity-50 pointer-events-none"></div>
+             <div class="flex justify-between items-center mb-5 relative z-10">
+               <h2 class="font-bold text-gray-700 text-lg flex items-center gap-2">
+                 <div class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-500"><i class="fas fa-plus"></i></div> 新增花費
+               </h2>
+               <div class="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
+                 <div class="relative inline-block w-10 mr-1 align-middle select-none">
+                    <input type="checkbox" id="currency-toggle" v-model="isJPY" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all duration-300" :class="isJPY ? 'right-0 border-pink-400' : 'left-0 border-gray-300'"/>
+                    <label for="currency-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-200 cursor-pointer" :class="isJPY ? 'bg-pink-400' : 'bg-gray-200'"></label>
+                 </div>
+                 <span class="text-xs font-bold w-8 text-center" :class="isJPY ? 'text-pink-500' : 'text-gray-400'">{{ isJPY ? 'JPY' : 'TWD' }}</span>
+               </div>
+             </div>
+             <div v-if="isJPY" class="mb-4 bg-yellow-50/80 p-2.5 rounded-xl flex justify-between items-center text-xs text-yellow-700 border border-yellow-100 shadow-sm backdrop-blur-sm">
+               <span class="font-bold"><i class="fas fa-coins mr-1"></i>匯率: 1 JPY ≈ </span>
+               <div class="flex items-center gap-1">
+                 <input type="number" v-model.number="exchangeRate" class="w-16 bg-white border border-yellow-200 rounded-lg px-2 py-0.5 text-center font-bold outline-none text-yellow-600" step="0.001"><span class="font-bold">TWD</span>
+               </div>
+               <button @click="fetchRate" class="text-yellow-600 hover:text-yellow-800"><i class="fas fa-sync-alt"></i></button>
+             </div>
+             <div class="space-y-4 relative z-10">
+               <div class="grid grid-cols-2 gap-3">
+                 <div class="bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                   <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Date</label>
+                   <input type="date" v-model="form.date" class="w-full bg-transparent text-gray-700 font-bold text-sm outline-none">
+                 </div>
+                 <div class="bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                   <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Payer</label>
+                   <select v-model="form.payer" class="w-full bg-transparent text-gray-700 font-bold text-sm outline-none">
+                     <option value="" disabled>誰付錢?</option>
+                     <option v-for="u in users" :value="u.name">{{u.name}}</option>
+                   </select>
+                 </div>
+               </div>
+               <div class="bg-gray-50 p-2 rounded-2xl border border-gray-100 flex items-center gap-2">
+                 <div class="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-gray-400 shadow-sm"><i class="fas fa-tag"></i></div>
+                 <input type="text" v-model="form.item" class="w-full bg-transparent text-gray-700 font-bold text-sm outline-none placeholder-gray-300" placeholder="買了什麼好東西？">
+               </div>
+               <div class="grid grid-cols-3 gap-3">
+                 <div class="col-span-2 bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                   <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Price ({{ isJPY ? '円' : 'NT$' }})</label>
+                   <input type="number" v-model.number="form.unitPrice" class="w-full bg-transparent text-gray-700 font-bold text-lg outline-none" placeholder="0">
+                 </div>
+                 <div class="bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                   <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Qty</label>
+                   <input type="number" v-model.number="form.quantity" class="w-full bg-transparent text-gray-700 font-bold text-lg outline-none text-center">
+                 </div>
+               </div>
+               <div class="bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                 <textarea v-model="form.note" rows="2" class="w-full bg-transparent text-gray-600 text-xs outline-none resize-none placeholder-gray-300" placeholder="備註 (例如：好吃到哭、記得還錢)"></textarea>
+               </div>
+               <div class="bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-2xl border border-pink-100 flex justify-between items-center shadow-inner">
+                 <div class="flex flex-col">
+                   <span class="text-xs text-pink-500 font-bold uppercase tracking-wider">Total (TWD)</span>
+                   <span v-if="isJPY" class="text-[10px] text-pink-400 font-mono">¥{{ (form.unitPrice * form.quantity).toLocaleString() }}</span>
+                 </div>
+                 <span class="font-bold text-pink-600 text-3xl font-mono tracking-tighter drop-shadow-sm">{{ displayTotalTWD.toLocaleString() }}</span>
+               </div>
+               <div>
+                 <div class="flex justify-between items-end mb-2 px-1">
+                    <label class="text-xs text-gray-400 font-bold uppercase">Split With</label>
+                    <button @click="toggleAll" class="text-xs text-pink-500 font-bold hover:text-pink-600">{{ isAllSelected ? 'Clear' : 'Select All' }}</button>
+                 </div>
+                 <div class="flex flex-wrap gap-2">
+                   <button v-for="u in users" :key="u.name" @click="toggleBen(u.name)"
+                     :class="form.beneficiaries.includes(u.name) ? 'bg-pink-500 text-white shadow-md transform scale-105' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'"
+                     class="px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 pop-btn">{{ u.name }}</button>
+                 </div>
+               </div>
+               <button @click="submit" class="pop-btn w-full bg-gray-800 text-white py-4 rounded-2xl font-bold shadow-xl shadow-gray-200 flex justify-center items-center gap-2 text-lg mt-2">
+                 <span>加入記帳</span> <i class="fas fa-check-circle text-pink-400"></i>
+               </button>
+             </div>
+          </div>
+
+          <!-- History -->
+          <div>
+            <div class="flex justify-between items-center mb-3 px-2">
+              <h3 class="font-bold text-gray-600 text-lg">History <span class="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full ml-1">{{ filteredExpenses.length }}</span></h3>
+              <div class="relative w-36 group">
+                <input type="text" v-model="filterText" placeholder="Search" class="w-full pl-8 pr-3 py-1.5 bg-white border-2 border-transparent group-hover:border-pink-100 focus:border-pink-300 rounded-full text-xs transition-all outline-none shadow-sm text-gray-600">
+                <i class="fas fa-search absolute left-3 top-2 text-gray-300 group-hover:text-pink-300 transition-colors text-xs"></i>
+              </div>
+            </div>
+            <div v-if="filteredExpenses.length === 0" class="text-center py-12">
+               <div class="w-24 h-24 bg-gray-100 rounded-full mx-auto flex items-center justify-center text-gray-300 text-3xl mb-3"><i class="fas fa-ghost"></i></div>
+               <p class="text-gray-400 text-sm font-bold">空空如也</p>
+            </div>
+            <div class="space-y-3 pb-10">
+              <div v-for="exp in filteredExpenses" :key="exp.rowId" @click="openEditModal(exp)" class="glass-card p-4 rounded-2xl relative cursor-pointer active:scale-[0.98] transition-all duration-200 group hover:shadow-lg border-l-[6px] border-l-pink-400">
+                <div class="flex justify-between items-start mb-2">
+                  <div class="flex flex-col">
+                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{{ exp.date }}</span>
+                     <h4 class="font-bold text-gray-800 text-lg leading-tight group-hover:text-pink-500 transition-colors">{{ exp.item }}</h4>
+                  </div>
+                  <div class="text-right">
+                     <span class="block font-bold text-gray-800 text-lg font-mono">NT$ {{ Math.round(exp.amount).toLocaleString() }}</span>
+                     <span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{{ exp.payer }}</span>
+                  </div>
+                </div>
+                <div class="flex justify-between items-center mt-3">
+                  <div class="flex -space-x-1 overflow-hidden">
+                     <div v-for="(ben, idx) in exp.beneficiaries.slice(0, 5)" :key="idx" class="w-5 h-5 rounded-full bg-blue-100 border border-white flex items-center justify-center text-[8px] text-blue-500 font-bold" :title="ben">{{ ben[0] }}</div>
+                     <div v-if="exp.beneficiaries.length > 5" class="w-5 h-5 rounded-full bg-gray-100 border border-white flex items-center justify-center text-[8px] text-gray-500 font-bold">+{{exp.beneficiaries.length-5}}</div>
+                  </div>
+                  <i class="fas fa-ellipsis-h text-gray-300 group-hover:text-pink-300"></i>
+                </div>
+                <div v-if="exp.note" class="mt-3 pt-2 border-t border-dashed border-gray-100 text-xs text-gray-500 flex gap-1.5">
+                  <i class="fas fa-comment-alt text-yellow-400 mt-0.5"></i>
+                  <span class="line-clamp-2">{{ exp.note }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: 結算 -->
+        <div v-if="currentTab === 'settlement'" class="space-y-5">
+           <div class="bg-gradient-to-br from-pink-500 to-rose-400 text-white p-6 rounded-[2rem] shadow-xl shadow-pink-200 relative overflow-hidden">
+             <i class="fas fa-plane-departure absolute -bottom-5 -right-5 text-9xl text-white opacity-10 transform -rotate-12"></i>
+             <div class="relative z-10 text-center">
+                <div class="text-pink-100 text-sm font-bold uppercase tracking-widest mb-1">Total Expenses</div>
+                <div class="text-5xl font-bold font-mono tracking-tighter drop-shadow-md">NT$ {{ Math.round(totalTrip).toLocaleString() }}</div>
+             </div>
+             <div class="grid grid-cols-2 gap-3 mt-6 relative z-10">
+               <div v-for="u in users" :key="u.name" class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                 <div class="text-[10px] text-pink-100 uppercase font-bold">{{ u.name }} 應付</div>
+                 <div class="font-bold text-lg font-mono">{{ Math.round(shouldPayMap[u.name] || 0).toLocaleString() }}</div>
+               </div>
+             </div>
+           </div>
+           <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+             <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-500"><i class="fas fa-exchange-alt"></i></span> 建議轉帳</h3>
+             <div v-if="settlements.length === 0" class="text-center py-8 bg-green-50 rounded-2xl border border-green-100">
+               <i class="fas fa-check-circle text-4xl text-green-400 mb-2"></i>
+               <p class="text-green-600 font-bold">完美！帳務已平衡</p>
+             </div>
+             <div v-else class="space-y-3">
+               <div v-for="s in settlements" class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                 <div class="flex items-center gap-3">
+                   <div class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center font-bold text-gray-600 border border-gray-100 text-xs">{{ s.from }}</div>
+                   <div class="flex flex-col items-center px-2"><span class="text-[10px] text-gray-400 font-bold">PAY</span><i class="fas fa-long-arrow-alt-right text-gray-300"></i></div>
+                   <div class="w-10 h-10 rounded-full bg-pink-500 shadow-md shadow-pink-200 flex items-center justify-center font-bold text-white text-xs">{{ s.to }}</div>
+                 </div>
+                 <div class="text-right"><div class="font-bold text-pink-500 font-mono text-lg">NT$ {{ s.amount.toLocaleString() }}</div></div>
+               </div>
+             </div>
+           </div>
+        </div>
+
+        <!-- TAB 3: 個人 -->
+        <div v-if="currentTab === 'personal'" class="space-y-5">
+          <div class="glass-card rounded-[2.5rem] p-8 text-center relative mt-12 z-0">
+            <div class="absolute inset-0 rounded-[2.5rem] overflow-hidden -z-10 pointer-events-none">
+              <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-blue-100 to-transparent opacity-50"></div>
+            </div>
+            
+            <div class="relative -mt-20 mb-4 z-10">
+              <div class="w-28 h-28 mx-auto rounded-full bg-white p-1.5 shadow-xl relative group">
+                <div class="w-full h-full rounded-full overflow-hidden bg-gray-100 relative">
+                  <img v-if="myInfo && myInfo.photo && !imgError" :key="myIdentity" :src="myInfo.photo" @error="handleImgError" class="w-full h-full object-cover">
+                  <div v-else class="w-full h-full flex items-center justify-center text-gray-300 text-4xl"><i class="fas fa-user"></i></div>
+                  <div @click="changePhoto" class="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity backdrop-blur-[2px]">
+                    <i class="fas fa-camera"></i>
+                  </div>
+                </div>
+                <div class="absolute bottom-1 right-1 w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center text-white border-4 border-white shadow-sm text-xs"><i class="fas fa-heart"></i></div>
+              </div>
+            </div>
+            
+            <div class="mb-6 relative z-10">
+              <select v-model="myIdentity" @change="saveIdentity" class="text-2xl font-bold text-center text-gray-800 bg-transparent border-none outline-none cursor-pointer hover:text-pink-500 transition-colors appearance-none pr-4">
+                <option disabled value="">我是誰?</option>
+                <option v-for="u in users" :value="u.name">{{ u.name }}</option>
+              </select>
+              <i class="fas fa-chevron-down text-xs text-gray-400 absolute top-1/2 -translate-y-1/2 ml-1 pointer-events-none"></i>
+            </div>
+
+            <div v-if="myInfo" class="flex justify-center gap-3 mb-6">
+              <a v-if="myInfo.phone" :href="'tel:' + myInfo.phone" class="bg-green-50 text-green-600 px-4 py-2 rounded-full text-xs font-bold border border-green-100 hover:bg-green-100 transition flex items-center gap-2"><i class="fas fa-phone-alt"></i> {{ myInfo.phone }}</a>
+              <a v-if="myInfo.email" :href="'mailto:' + myInfo.email" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-xs font-bold border border-blue-100 hover:bg-blue-100 transition flex items-center gap-2"><i class="fas fa-envelope"></i> Email</a>
+            </div>
+
+            <div v-if="myIdentity" class="grid grid-cols-2 gap-4">
+               <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                 <div class="text-[10px] text-blue-400 font-bold uppercase mb-1">Total Paid</div>
+                 <div class="text-2xl font-bold text-blue-600 font-mono">{{ Math.round(paidMap[myIdentity] || 0).toLocaleString() }}</div>
+                 <div class="text-[10px] text-blue-300">代墊金額</div>
+               </div>
+               <div class="bg-pink-50 p-4 rounded-2xl border border-pink-100">
+                 <div class="text-[10px] text-pink-400 font-bold uppercase mb-1">Total Cost</div>
+                 <div class="text-2xl font-bold text-pink-600 font-mono">{{ Math.round(shouldPayMap[myIdentity] || 0).toLocaleString() }}</div>
+                 <div class="text-[10px] text-pink-300">實際花費</div>
+               </div>
+            </div>
+          </div>
+
+          <div v-if="myIdentity" class="bg-white rounded-[2rem] p-6 shadow-sm">
+            <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-receipt text-gray-300"></i> 我的消費紀錄</h3>
+            <div v-if="myExpenses.length === 0" class="text-center text-gray-300 py-6 text-sm">還沒有花費紀錄喔</div>
+            <div class="space-y-4">
+              <div v-for="exp in myExpenses" :key="exp.rowId" class="flex justify-between items-center group">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 text-xs font-bold group-hover:bg-pink-50 group-hover:text-pink-500 transition-colors">{{ exp.date.substring(5) }}</div>
+                  <div><div class="text-sm font-bold text-gray-800 line-clamp-1">{{ exp.item }}</div><div class="text-[10px] text-gray-400">{{ exp.payer }} 付款</div></div>
+                </div>
+                <div class="text-right">
+                  <div class="font-bold text-pink-500 font-mono">-{{ Math.round(exp.amount / exp.beneficiaries.length).toLocaleString() }}</div>
+                  <div class="text-[10px] text-gray-300">總價 {{ Math.round(exp.amount).toLocaleString() }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Modal -->
+      <div v-if="showEditModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+        <div class="bg-white w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-y-auto p-6 relative shadow-2xl animate-[slideUp_0.3s_ease-out]">
+          <button @click="showEditModal = false" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200"><i class="fas fa-times"></i></button>
+          <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2"><span class="text-pink-500"><i class="fas fa-edit"></i></span> 修改帳目</h2>
+          <div class="space-y-4">
+             <div class="grid grid-cols-2 gap-3">
+               <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                  <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Date</label>
+                  <input type="date" v-model="editForm.date" class="w-full bg-transparent font-bold text-sm outline-none">
+               </div>
+               <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                  <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Total (NT$)</label>
+                  <input type="number" v-model="editForm.totalAmount" class="w-full bg-transparent font-bold text-sm outline-none text-pink-600">
+               </div>
+             </div>
+             <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Item</label>
+                <input type="text" v-model="editForm.item" class="w-full bg-transparent font-bold text-sm outline-none">
+             </div>
+             <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Payer</label>
+                <select v-model="editForm.payer" class="w-full bg-transparent font-bold text-sm outline-none"><option v-for="u in users" :value="u.name">{{u.name}}</option></select>
+             </div>
+             <div>
+               <label class="text-xs text-gray-400 font-bold uppercase mb-2 block">Split With</label>
+               <div class="flex flex-wrap gap-2">
+                 <button v-for="u in users" :key="u.name" @click="toggleEditBen(u.name)"
+                   :class="editForm.beneficiaries.includes(u.name) ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-500'"
+                   class="px-3 py-1 rounded-full text-xs font-bold transition-colors">{{ u.name }}</button>
+               </div>
+             </div>
+             <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+               <textarea v-model="editForm.note" rows="3" class="w-full bg-transparent text-xs text-gray-600 outline-none resize-none placeholder-gray-300" placeholder="備註"></textarea>
+             </div>
+             <div class="grid grid-cols-2 gap-3 pt-4">
+               <button @click="deleteItem(editForm)" class="bg-red-50 text-red-500 py-3 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors">刪除紀錄</button>
+               <button @click="saveEdit" class="bg-gray-800 text-white py-3 rounded-xl text-sm font-bold shadow-lg hover:bg-gray-900 transition-colors">儲存變更</button>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 🔥 您的 API 網址填在這裡
+      const API_URL = "https://script.google.com/macros/s/AKfycbxsjTTaG_pEm6M0udKuN5Lq-XmfKR4xHQH3xaIIA_UqICbyQ8IwEwKi2L8QM7xvCp1E0w/exec"; 
+
+      const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
+      createApp({
+        setup() {
+          const currentTab = ref('record');
+          const isLoading = ref(false);
+          const loadError = ref('');
+          const users = ref([]); const expenses = ref([]); const filterText = ref('');
+          const isJPY = ref(false); const exchangeRate = ref(0.22);
+          const myIdentity = ref(localStorage.getItem('myIdentity') || '');
+          const imgError = ref(false);
+
+          // API 請求封裝
+          const apiRequest = async (action, data = null) => {
+            if (!API_URL.includes("exec")) throw new Error("請先設定正確的 API_URL");
+            if (data) {
+              await fetch(API_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action, ...data })
+              });
+              return { success: true };
+            } else {
+              const response = await fetch(`${API_URL}?action=${action}`);
+              return await response.json();
+            }
+          };
+
+          const myInfo = computed(() => !myIdentity.value ? null : users.value.find(u => u.name === myIdentity.value) || null);
+          watch(myIdentity, () => { imgError.value = false; });
+          const handleImgError = () => { imgError.value = true; };
+
+          const form = reactive({ date: new Date().toISOString().split('T')[0], payer: '', item: '', unitPrice: '', quantity: 1, beneficiaries: [], note: '' });
+          const showEditModal = ref(false);
+          const editForm = reactive({ rowId:0, date:'', payer:'', item:'', totalAmount:0, beneficiaries:[], note:'' });
+
+          const displayTotalTWD = computed(() => {
+            const rawTotal = (form.unitPrice || 0) * (form.quantity || 1);
+            return isJPY.value ? Math.round(rawTotal * exchangeRate.value) : Math.round(rawTotal);
+          });
+
+          // 讀取匯率和資料
+          const fetchRate = async () => { 
+             const res = await apiRequest('getInitData'); 
+             if(res.success) exchangeRate.value = res.rate; 
+          };
+
+          const loadData = async () => {
+            isLoading.value = true; loadError.value = '';
+            try {
+              const res = await apiRequest('getInitData');
+              if (res.success) {
+                exchangeRate.value = res.rate;
+                users.value = res.users;
+                if(!form.payer && res.users.length>0) form.payer = res.users[0].name;
+                if(form.beneficiaries.length===0) form.beneficiaries = res.users.map(x => x.name);
+                expenses.value = res.expenses.filter(item => item.item && String(item.item).trim() !== "");
+                calculateSettlement();
+              } else {
+                throw new Error(res.message || "載入失敗");
+              }
+            } catch (err) { loadError.value = err.message; console.error(err); } 
+            finally { isLoading.value = false; }
+          };
+
+          const submit = async () => {
+            if(!form.item || !form.unitPrice || !form.payer || form.beneficiaries.length === 0) { Swal.fire({icon: 'warning', title: '等等！', text: '資料不完整', confirmButtonColor: '#ec4899'}); return; }
+            isLoading.value = true;
+            let finalPrice = form.unitPrice; let finalNote = form.note;
+            if (isJPY.value) {
+              finalPrice = Math.round(displayTotalTWD.value / form.quantity);
+              finalNote = (finalNote ? finalNote + ' ' : '') + `[JP¥${(form.unitPrice * form.quantity).toLocaleString()} @ ${exchangeRate.value}]`;
+            }
+            const payload = { data: { date: form.date, payer: form.payer, item: form.item, unitPrice: finalPrice, quantity: form.quantity, beneficiaries: [...form.beneficiaries], note: finalNote } };
+            
+            try {
+              await apiRequest('addExpense', payload);
+              Swal.fire({icon:'success', title:'已記帳', timer:1000, showConfirmButton:false}); 
+              loadData(); form.item = ''; form.unitPrice = ''; form.quantity = 1; form.note = '';
+            } catch(e) {
+              isLoading.value = false; Swal.fire('錯誤', e.message, 'error');
+            }
+          };
+
+          const openEditModal = (exp) => { Object.assign(editForm, { rowId: exp.rowId, date: exp.date, payer: exp.payer, item: exp.item, totalAmount: exp.amount, beneficiaries: [...exp.beneficiaries], note: exp.note }); showEditModal.value = true; };
+          const toggleEditBen = (u) => { const i = editForm.beneficiaries.indexOf(u); i===-1?editForm.beneficiaries.push(u):editForm.beneficiaries.splice(i,1); };
+          
+          const saveEdit = async () => { 
+            isLoading.value = true; 
+            try {
+              await apiRequest('editExpense', { data: {...editForm, unitPrice: editForm.totalAmount, quantity: 1} });
+              isLoading.value = false; showEditModal.value = false; loadData();
+            } catch(e) { isLoading.value = false; Swal.fire('失敗', e.message, 'error'); }
+          };
+          
+          const deleteItem = async (item) => { 
+            const res = await Swal.fire({title: '確定刪除?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: '刪除'});
+            if(res.isConfirmed) { 
+              isLoading.value = true; 
+              try {
+                await apiRequest('deleteExpense', { rowId: item.rowId });
+                loadData(); showEditModal.value = false;
+              } catch(e) { isLoading.value = false; }
+            } 
+          };
+          
+          const saveIdentity = () => { localStorage.setItem('myIdentity', myIdentity.value); calculateSettlement(); };
+          
+          const changePhoto = async () => {
+            const { value: url } = await Swal.fire({ title: '設定頭貼', input: 'text', inputLabel: '請貼上圖片網址', inputPlaceholder: 'https://...', showCancelButton: true, confirmButtonText: '儲存' });
+            if (url) {
+              if (!myIdentity.value) { Swal.fire('請先選擇身分', '', 'warning'); return; }
+              isLoading.value = true;
+              try {
+                await apiRequest('updateUserPhoto', { userName: myIdentity.value, photoUrl: url });
+                Swal.fire({icon:'success', title:'頭貼已更新', timer:1500, showConfirmButton:false}); 
+                loadData();
+              } catch(e) { isLoading.value = false; Swal.fire('失敗', e.message, 'error'); }
+            }
+          };
+
+          const totalTrip = ref(0); const paidMap = ref({}); const shouldPayMap = ref({}); const settlements = ref([]);
+          const calculateSettlement = () => {
+            let paid={}, should={}, total=0;
+            users.value.forEach(u => { paid[u.name]=0; should[u.name]=0; });
+            expenses.value.forEach(ex => {
+              total += ex.amount;
+              if(paid[ex.payer]!==undefined) paid[ex.payer] += ex.amount;
+              const len = ex.beneficiaries.length;
+              if(len>0) { const split = ex.amount/len; ex.beneficiaries.forEach(b => { if(should[b]!==undefined) should[b]+=split; }); }
+            });
+            totalTrip.value = total; paidMap.value = paid; shouldPayMap.value = should;
+            let bals = users.value.map(u => ({name: u.name, amt: paid[u.name]-should[u.name]})).filter(x=>Math.abs(x.amt)>1);
+            bals.sort((a,b)=>a.amt-b.amt);
+            let res=[]; let i=0, j=bals.length-1;
+            while(i<j) {
+              let d=bals[i], c=bals[j], amt=Math.min(Math.abs(d.amt), c.amt);
+              res.push({from:d.name, to:c.name, amount:Math.round(amt)});
+              d.amt+=amt; c.amt-=amt; if(Math.abs(d.amt)<1) i++; if(c.amt<1) j--;
+            }
+            settlements.value = res;
+          };
+
+          const myExpenses = computed(() => !myIdentity.value ? [] : expenses.value.filter(e => e.beneficiaries.includes(myIdentity.value)));
+          const filteredExpenses = computed(() => {
+            let res = expenses.value;
+            if(filterText.value) { const t=filterText.value.toLowerCase(); res=res.filter(e=>e.item && String(e.item).toLowerCase().includes(t)||e.payer.includes(t)); }
+            return res.sort((a,b) => new Date(b.date)-new Date(a.date) || b.rowId-a.rowId);
+          });
+          
+          const toggleAll = () => form.beneficiaries = isAllSelected.value ? [] : users.value.map(u=>u.name);
+          const toggleBen = (u) => { const i=form.beneficiaries.indexOf(u); i===-1?form.beneficiaries.push(u):form.beneficiaries.splice(i,1); };
+          const isAllSelected = computed(() => users.value.length>0 && form.beneficiaries.length===users.value.length);
+
+          onMounted(loadData);
+
+          return {
+            currentTab, isLoading, loadError, users, form, isJPY, exchangeRate, displayTotalTWD,
+            fetchRate, submit, filteredExpenses, filterText,
+            openEditModal, showEditModal, editForm, toggleEditBen, saveEdit, deleteItem,
+            totalTrip, paidMap, shouldPayMap, settlements, calculateSettlement,
+            myIdentity, saveIdentity, changePhoto, myExpenses, myInfo,
+            toggleAll, toggleBen, isAllSelected, imgError, handleImgError
+          };
+        }
+      }).mount('#app');
+    </script>
+  </body>
+</html>
