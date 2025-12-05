@@ -344,6 +344,13 @@
 
     <script>
       const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
+      
+      // ==========================================
+      // 【設定】請將 Google Apps Script 網址貼在下方引號中
+      // ==========================================
+      const API_URL = "https://script.google.com/macros/s/AKfycbzD0COm2xYm2aqt8-Xap6og3XWPOnPp3P4YsKYFbRofWAUUOFswPtRJUYCp7NLPLW_tAA/exec"; 
+      // 例如: const API_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
+
       createApp({
         setup() {
           const currentTab = ref('record');
@@ -357,10 +364,29 @@
           const myIdentity = ref(localStorage.getItem('myIdentity') || '');
           const imgError = ref(false);
 
-          const runGAS = (funcName, args = []) => {
-            return new Promise((resolve, reject) => {
-              google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[funcName](...args);
-            });
+          // ==========================================
+          // 修正的核心：runGAS 函式改為使用 fetch 呼叫 Web API
+          // ==========================================
+          const runGAS = async (funcName, args = []) => {
+            if (!API_URL) throw new Error("請先在程式碼中設定 API_URL (Google Apps Script 網址)");
+
+            // 讀取類的操作使用 GET
+            if (['getExchangeRate', 'getUserList', 'getExpensesData'].includes(funcName)) {
+                const response = await fetch(`${API_URL}?op=${funcName}`);
+                const result = await response.json();
+                if (result.status === 'error') throw new Error(result.message);
+                return result; // 直接回傳數據，不用再拆 data
+            } 
+            // 寫入類的操作使用 POST
+            else {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ op: funcName, args: args })
+                });
+                const result = await response.json();
+                return result; // 回傳 { success: true/false, message: ... }
+            }
           };
 
           const myInfo = computed(() => {
@@ -374,9 +400,6 @@
 
           const handleImgError = () => {
             imgError.value = true;
-            if (myInfo.value && myInfo.value.photo) {
-                console.log('Image failed to load:', myInfo.value.photo);
-            }
           };
 
           const form = reactive({ date: new Date().toISOString().split('T')[0], payer: '', item: '', unitPrice: '', quantity: 1, beneficiaries: [], note: '' });
@@ -442,11 +465,10 @@
             const { value: url } = await Swal.fire({
               title: '設定頭貼',
               input: 'text',
-              inputLabel: '請貼上圖片網址', // Modified text
+              inputLabel: '請貼上圖片網址', 
               inputPlaceholder: 'https://...',
               showCancelButton: true,
               confirmButtonText: '儲存',
-              // footer removed
             });
 
             if (url) {
