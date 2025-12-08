@@ -1,416 +1,434 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+  <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>大阪畢業旅行 - Osaka Trip</title>
   
-  <!-- 核心套件 CDN -->
+  <!-- 1. 網站標題與 Meta (還原您原本的設定) -->
+  <title>大阪畢業旅行小幫手</title>
+  <meta name="description" content="自動匯率換算、多人分帳，大阪畢業旅行必備記帳工具！">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="大阪青春畢旅 - 記帳分帳小幫手">
+  <meta property="og:description" content="自動匯率換算、多人分帳，輕鬆搞定畢業旅行帳務！">
+  <meta property="og:image" content="https://placehold.co/1200x630/ec4899/ffffff.png?text=OSAKA+TRIP&font=montserrat">
+  <meta property="og:url" content="https://johnnyfu987.github.io/osaka-trip/">
+  
+  <!-- PWA 設定 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#ec4899">
+  <link rel="apple-touch-icon" href="https://placehold.co/180x180/ec4899/ffffff.png?text=Osaka&font=roboto">
+  <link rel="icon" type="image/png" href="https://placehold.co/192x192/ec4899/ffffff.png?text=Osaka&font=roboto">
+
+  <!-- 套件引入 -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <!-- 地圖套件 Leaflet -->
+  <!-- Leaflet 地圖 -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- FontAwesome -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
-  <!-- ================= CSS 區域 (可存為 style.css) ================= -->
   <style>
-    body {
-      font-family: 'Poppins', 'Noto Sans TC', sans-serif;
-      background-color: #f3f4f6;
-      overscroll-behavior-y: none; /* 防止手機下拉重整 */
-    }
+    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
     
-    /* 自定義捲軸 */
+    body { 
+      font-family: 'M PLUS Rounded 1c', 'Noto Sans TC', sans-serif; 
+      background: linear-gradient(135deg, #fff1f2 0%, #e0f2fe 100%);
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent; 
+      color: #475569;
+      padding-bottom: 80px; /* 避免內容被底部遮住 */
+    }
     ::-webkit-scrollbar { width: 0px; background: transparent; }
     
-    /* 背景漸層 Header (改為適合大阪的活力配色：粉紅到紫) */
-    .trip-header {
-      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%); 
-      border-bottom-left-radius: 2rem;
-      border-bottom-right-radius: 2rem;
-      padding-bottom: 2rem;
-      box-shadow: 0 10px 30px -10px rgba(236, 72, 153, 0.5);
+    /* === 您的設計還原：載入動畫 === */
+    .loading-overlay { 
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: rgba(255,255,255,0.8); backdrop-filter: blur(5px);
+      display: flex; justify-content: center; align-items: center; z-index: 999; flex-direction: column; 
     }
 
-    /* 卡片玻璃擬態 */
+    /* === 您的設計還原：玻璃擬態卡片 === */
     .glass-card {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 4px 15px rgba(244, 114, 182, 0.15); backdrop-filter: blur(10px);
     }
+    
+    .pop-btn { transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .pop-btn:active { transform: scale(0.95); }
 
-    /* 導航按鈕 */
-    .nav-btn {
-      transition: all 0.2s;
-      opacity: 0.7;
-    }
-    .nav-btn.active {
-      opacity: 1;
-      transform: scale(1.1);
-      background-color: rgba(255,255,255,0.2);
-      border-radius: 12px;
-    }
+    /* === 您的設計還原：Toggle Switch === */
+    .toggle-checkbox:checked { right: 0; border-color: #f472b6; }
+    .toggle-checkbox:checked + .toggle-label { background-color: #f472b6; }
 
-    /* 行程表時間軸 */
-    .timeline-line {
-      position: absolute;
-      left: 20px;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background-color: #e5e7eb;
-      z-index: 0;
+    /* 導航按鈕樣式優化 */
+    .nav-item {
+        color: #94a3b8; transition: all 0.3s;
     }
-
-    /* 地圖容器 */
-    #map { height: 100%; width: 100%; border-radius: 1.5rem; z-index: 0; }
-
-    /* Loading 動畫 */
-    .loader {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #ec4899;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
+    .nav-item.active {
+        color: #ec4899; transform: scale(1.1); font-weight: bold;
     }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    /* 地圖樣式 */
+    #map { height: 60vh; width: 100%; border-radius: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 0; }
   </style>
 </head>
 
 <body>
-  <div id="app" class="max-w-md mx-auto min-h-screen relative flex flex-col bg-gray-50">
+  <div id="app" class="max-w-md mx-auto min-h-screen relative">
     
-    <!-- 全局 Loading -->
-    <div v-if="loading" class="fixed inset-0 z-[999] bg-white/90 flex flex-col items-center justify-center">
-      <div class="loader mb-4"></div>
-      <p class="text-pink-500 font-bold tracking-widest animate-pulse">OSAKA TRIP</p>
-      <p class="text-xs text-gray-400 mt-2">{{ loadingMessage }}</p>
-      <button v-if="showRetryBtn" @click="loadAllData" class="mt-4 px-4 py-2 bg-gray-200 rounded-full text-xs text-gray-600">重試連線</button>
+    <!-- 1. 還原的 Loading 畫面 -->
+    <div v-if="loading" class="loading-overlay">
+      <div class="relative">
+         <i class="fas fa-plane fa-bounce text-5xl text-pink-400 mb-4 drop-shadow-lg"></i>
+         <i class="fas fa-cloud text-blue-200 absolute -top-2 -right-6 text-2xl animate-pulse"></i>
+      </div>
+      <span class="text-pink-500 font-bold text-lg tracking-widest mt-2">OSAKA TRIP</span>
+      <span class="text-gray-400 text-xs">{{ loadingMessage }}</span>
+      <button v-if="showRetryBtn" @click="loadAllData" class="mt-4 px-4 py-1 bg-gray-100 rounded-full text-xs text-gray-500">重試</button>
     </div>
 
-    <!-- Header 區域 (固定在上方) -->
-    <div class="trip-header text-white px-6 pt-12 sticky top-0 z-40">
-      <div class="flex justify-between items-start mb-4">
-        <div>
-          <div class="flex items-center gap-2 mb-1">
-            <i class="fas fa-plane text-pink-200 transform -rotate-45"></i>
-            <span class="text-xs font-bold tracking-widest text-pink-100 uppercase">Graduation Trip</span>
-          </div>
-          <h1 class="text-3xl font-bold tracking-tight">Osaka <span class="text-lg font-normal opacity-80">大阪</span></h1>
-          <p class="text-xs text-pink-100 mt-1 opacity-80">May 20 - May 24, 2025</p>
-        </div>
-        
-        <!-- App 切換導航 -->
-        <div class="flex bg-black/20 backdrop-blur-md rounded-2xl p-1.5 gap-1">
-          <button @click="switchTab('itinerary')" :class="['nav-btn p-2.5', currentTab==='itinerary'?'active':'']"><i class="fas fa-calendar-alt"></i></button>
-          <button @click="switchTab('map')" :class="['nav-btn p-2.5', currentTab==='map'?'active':'']"><i class="fas fa-map-marked-alt"></i></button>
-          <button @click="switchTab('translate')" :class="['nav-btn p-2.5', currentTab==='translate'?'active':'']"><i class="fas fa-language"></i></button>
-          <button @click="switchTab('expense')" :class="['nav-btn p-2.5', currentTab==='expense'?'active':'']"><i class="fas fa-wallet"></i></button>
-          <button @click="switchTab('shopping')" :class="['nav-btn p-2.5', currentTab==='shopping'?'active':'']"><i class="fas fa-shopping-bag"></i></button>
-        </div>
+    <!-- 2. 還原的 Header (白色霧面質感) -->
+    <div class="sticky top-0 bg-white/90 backdrop-blur-md shadow-sm z-40 pt-10 pb-2 px-5 rounded-b-3xl">
+      <h1 class="text-2xl font-bold text-gray-800 flex justify-center items-center gap-2 mb-3">
+        <span class="text-pink-500"><i class="fas fa-torii-gate"></i></span>
+        <span>大阪畢業旅行</span>
+        <span class="text-blue-400"><i class="fas fa-paper-plane text-sm"></i></span>
+      </h1>
+      
+      <!-- 功能導航列 (整合了新功能) -->
+      <div class="bg-gray-100/80 p-1.5 rounded-2xl flex justify-between shadow-inner overflow-x-auto no-scrollbar">
+        <button v-for="tab in tabs" :key="tab.id" 
+          @click="switchTab(tab.id)"
+          :class="currentTab === tab.id ? 'bg-white text-pink-500 shadow-md' : 'text-gray-400 hover:text-gray-600'"
+          class="flex-1 py-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 min-w-[60px]">
+          <i :class="tab.icon + ' text-base'"></i>
+          <span>{{ tab.name }}</span>
+        </button>
       </div>
 
-      <!-- 如果是行程表，顯示日期選單 -->
-      <div v-if="currentTab === 'itinerary'" class="flex justify-between mt-6 bg-white/10 rounded-xl p-1 backdrop-blur-sm overflow-x-auto">
+      <!-- 如果是行程頁，顯示日期選擇 -->
+      <div v-if="currentTab === 'itinerary'" class="mt-3 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
         <button v-for="(day, idx) in tripDays" :key="day" 
           @click="selectedDate = day"
-          class="flex-1 py-2 rounded-lg text-center transition-all min-w-[60px]"
-          :class="selectedDate === day ? 'bg-white text-pink-600 shadow-md scale-105 font-bold' : 'text-pink-100 hover:bg-white/10'">
-          <div class="text-[10px] opacity-70">{{ formatMonthDay(day) }}</div>
-          <div class="text-sm">D{{ idx + 1 }}</div>
+          class="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border"
+          :class="selectedDate === day ? 'bg-pink-500 text-white border-pink-500 shadow-md' : 'bg-white text-gray-500 border-gray-200'">
+          12/{{ day.split('-')[2] }} (D{{idx+1}})
         </button>
       </div>
     </div>
 
-    <!-- 主要內容區 -->
-    <div class="flex-1 p-5 relative z-10 -mt-6">
+    <!-- 3. 主要內容區 -->
+    <div class="p-5 space-y-6">
       
-      <!-- 1. 行程表頁面 -->
-      <div v-show="currentTab === 'itinerary'" class="space-y-4">
-        <!-- 新增按鈕 -->
-        <div class="flex justify-end mb-2">
-           <button @click="openItineraryModal()" class="bg-pink-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg shadow-pink-200 hover:bg-pink-600 transition flex items-center gap-2">
-             <i class="fas fa-plus"></i> 新增行程
+      <!-- (A) 行程表 (優化版) -->
+      <div v-show="currentTab === 'itinerary'">
+        <div class="flex justify-between items-center mb-4">
+           <h2 class="font-bold text-gray-700">當日行程</h2>
+           <button @click="openItineraryModal()" class="text-xs bg-pink-100 text-pink-500 px-3 py-1.5 rounded-full font-bold hover:bg-pink-200 transition">
+             <i class="fas fa-plus mr-1"></i>新增
            </button>
         </div>
 
-        <div v-if="filteredItinerary.length === 0" class="text-center py-10 text-gray-400 bg-white rounded-3xl border border-gray-100">
-           <i class="fas fa-calendar-day text-4xl mb-3 text-gray-200"></i>
-           <p class="text-sm">這天還沒有行程喔</p>
+        <div v-if="filteredItinerary.length === 0" class="text-center py-10">
+           <div class="w-20 h-20 bg-gray-100 rounded-full mx-auto flex items-center justify-center text-gray-300 text-2xl mb-2"><i class="fas fa-bed"></i></div>
+           <p class="text-gray-400 text-sm">這天還沒有安排行程喔</p>
         </div>
 
-        <div class="relative pl-4 space-y-6 pb-20">
-          <div class="timeline-line"></div>
+        <div class="space-y-4 relative pl-4">
+          <!-- 時間軸線 -->
+          <div class="absolute left-[21px] top-2 bottom-4 w-0.5 bg-gray-200 -z-10"></div>
           
           <div v-for="item in filteredItinerary" :key="item.id" class="relative pl-8 group">
-            <!-- 時間點 -->
-            <div class="absolute left-0 top-1 w-10 h-10 rounded-full border-4 border-gray-50 flex items-center justify-center z-10 shadow-sm"
-                 :class="getCategoryColor(item.type)">
-               <i :class="getCategoryIcon(item.type)" class="text-white text-xs"></i>
-            </div>
+            <!-- 時間點點 -->
+            <div class="absolute left-0 top-3 w-3 h-3 rounded-full bg-white border-2 border-pink-400 z-10"></div>
             
-            <!-- 卡片 -->
-            <div @click="openItineraryModal(item)" class="glass-card p-4 rounded-2xl cursor-pointer hover:shadow-md transition active:scale-95 border-l-4" :class="getCategoryBorder(item.type)">
-              <div class="flex justify-between items-start">
-                <div>
-                  <div class="flex items-center gap-2 mb-1">
-                    <span class="text-2xl font-bold text-gray-800">{{ item.starttime }}</span>
-                    <span v-if="item.endtime" class="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">~ {{ item.endtime }}</span>
-                  </div>
-                  <h3 class="font-bold text-gray-700 text-lg mb-1">{{ item.title }}</h3>
-                  <div v-if="item.location" class="text-xs text-gray-500 flex items-center gap-1">
-                    <i class="fas fa-map-marker-alt text-red-400"></i> {{ item.location }}
-                  </div>
-                </div>
-                <!-- 刪除按鈕 (右滑或點擊顯示) -->
-                <button @click.stop="deleteItinerary(item.id)" class="text-gray-300 hover:text-red-400 p-2"><i class="fas fa-trash-alt"></i></button>
-              </div>
-              <div v-if="item.note" class="mt-3 pt-2 border-t border-dashed border-gray-100 text-xs text-gray-500">
-                <i class="fas fa-sticky-note text-yellow-400 mr-1"></i> {{ item.note }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2. 地圖頁面 -->
-      <div v-show="currentTab === 'map'" class="h-[70vh] glass-card rounded-3xl p-1 relative overflow-hidden shadow-xl">
-        <div id="map"></div>
-        <div class="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg z-[400] text-center">
-          <p class="text-xs text-gray-500 mb-1">地圖顯示今日行程與您的位置</p>
-          <button @click="locateUser" class="w-full bg-blue-500 text-white py-2 rounded-lg text-sm font-bold"><i class="fas fa-location-arrow mr-1"></i> 定位我的位置</button>
-        </div>
-      </div>
-
-      <!-- 3. 翻譯頁面 -->
-      <div v-show="currentTab === 'translate'" class="space-y-6 mt-4">
-        <div class="text-center mb-8">
-          <h2 class="text-2xl font-bold text-gray-800">Google 翻譯捷徑</h2>
-          <p class="text-sm text-gray-400">點擊下方按鈕，直接開啟對應翻譯</p>
-        </div>
-
-        <a href="https://translate.google.com/?sl=zh-TW&tl=ja&op=translate" target="_blank" class="block w-full">
-          <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-3xl shadow-lg shadow-blue-200 text-white flex justify-between items-center transform transition active:scale-95">
-            <div>
-              <p class="text-blue-200 text-xs mb-1">我說中文 (轉日文)</p>
-              <h3 class="text-3xl font-bold">CH <i class="fas fa-arrow-right text-sm mx-2 opacity-50"></i> JP</h3>
-            </div>
-            <i class="fas fa-external-link-alt text-2xl opacity-50"></i>
-          </div>
-        </a>
-
-        <a href="https://translate.google.com/?sl=ja&tl=zh-TW&op=translate" target="_blank" class="block w-full">
-          <div class="bg-white border border-gray-100 p-6 rounded-3xl shadow-lg text-gray-700 flex justify-between items-center transform transition active:scale-95">
-            <div>
-              <p class="text-gray-400 text-xs mb-1">對方說日文 (轉中文)</p>
-              <h3 class="text-3xl font-bold">JP <i class="fas fa-arrow-right text-sm mx-2 opacity-30"></i> CH</h3>
-            </div>
-            <i class="fas fa-external-link-alt text-2xl opacity-20"></i>
-          </div>
-        </a>
-      </div>
-
-      <!-- 4. 記帳系統 (保留您原本的邏輯，重整 UI) -->
-      <div v-show="currentTab === 'expense'" class="space-y-4">
-        <!-- 餘額概況 -->
-        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
-           <div>
-             <p class="text-xs text-gray-400 uppercase font-bold">Total Expenses</p>
-             <h2 class="text-2xl font-bold text-gray-800 font-mono">NT$ {{ totalExpense.toLocaleString() }}</h2>
-           </div>
-           <button @click="openExpenseModal" class="bg-pink-500 text-white w-10 h-10 rounded-full shadow-lg shadow-pink-200 flex items-center justify-center hover:bg-pink-600 transition"><i class="fas fa-plus"></i></button>
-        </div>
-
-        <!-- 記帳列表 -->
-        <div class="space-y-3 pb-20">
-          <div v-for="exp in expenses" :key="exp.rowId" class="glass-card p-3 rounded-xl flex justify-between items-center">
-             <div class="flex items-center gap-3">
-               <div class="w-10 h-10 rounded-full bg-pink-50 text-pink-500 flex items-center justify-center font-bold text-xs">
-                 {{ exp.date ? exp.date.substring(5) : 'Date' }}
+            <!-- 行程卡片 -->
+            <div @click="openItineraryModal(item)" class="glass-card p-4 rounded-2xl cursor-pointer active:scale-95 transition hover:shadow-lg bg-white relative overflow-hidden">
+               <!-- 左側時間 -->
+               <div class="flex items-start gap-3">
+                 <div class="flex flex-col items-center min-w-[50px]">
+                   <span class="text-lg font-bold text-gray-800">{{ item.starttime }}</span>
+                   <span v-if="item.endtime" class="text-[10px] text-gray-400">{{ item.endtime }}</span>
+                 </div>
+                 <!-- 右側內容 -->
+                 <div class="flex-1 border-l pl-3 border-gray-100">
+                   <div class="flex justify-between items-start">
+                     <h3 class="font-bold text-gray-700 text-base mb-1">{{ item.title }}</h3>
+                     <span class="text-[10px] px-2 py-0.5 rounded-full" 
+                       :class="getCategoryClass(item.type)">{{ item.type_label }}</span>
+                   </div>
+                   <div v-if="item.location" class="text-xs text-gray-500 flex items-center gap-1 mb-1">
+                     <i class="fas fa-map-marker-alt text-pink-400"></i> {{ item.location }}
+                   </div>
+                   <div v-if="item.note" class="text-xs text-gray-400 bg-gray-50 p-2 rounded-lg mt-1">
+                     <i class="fas fa-sticky-note mr-1 text-yellow-400"></i>{{ item.note }}
+                   </div>
+                 </div>
                </div>
-               <div>
-                 <p class="font-bold text-gray-700 text-sm">{{ exp.item }}</p>
-                 <p class="text-[10px] text-gray-400">{{ exp.payer }} 付款 • {{ exp.beneficiaries ? exp.beneficiaries.length : 0 }} 人分</p>
-               </div>
-             </div>
-             <div class="text-right">
-               <p class="font-bold text-gray-800 font-mono">{{ Number(exp.amount).toLocaleString() }}</p>
-               <button @click="deleteExpense(exp.rowId)" class="text-gray-300 hover:text-red-400 text-xs p-1"><i class="fas fa-trash"></i></button>
-             </div>
+               <!-- 刪除按鈕 -->
+               <button @click.stop="deleteItinerary(item.id)" class="absolute top-2 right-2 text-gray-200 hover:text-red-400 p-2"><i class="fas fa-trash-alt"></i></button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- 5. 購物清單 -->
-      <div v-show="currentTab === 'shopping'" class="space-y-4">
-        <div class="flex justify-end">
-           <button @click="openShoppingModal" class="bg-purple-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg shadow-purple-200 hover:bg-purple-700 transition flex items-center gap-2">
-             <i class="fas fa-plus"></i> 新增願望
+      <!-- (B) 地圖 (更換為好看的底圖) -->
+      <div v-show="currentTab === 'map'">
+        <div class="glass-card p-1 rounded-[1.5rem]">
+          <div id="map"></div>
+        </div>
+        <div class="mt-4 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+           <!-- 快速定位行程按鈕 -->
+           <button v-for="item in filteredItinerary" :key="item.id" @click="panTo(item.lat, item.lng)" 
+             v-show="item.lat && item.lng"
+             class="bg-white px-3 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap border border-gray-100 text-gray-600">
+             📍 {{ item.title }}
            </button>
         </div>
-
-        <div class="grid grid-cols-2 gap-4 pb-20">
-          <div v-for="item in shoppingList" :key="item.id" class="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 group relative">
-             <div class="h-32 bg-gray-100 relative">
-               <img v-if="item.image" :src="item.image" class="w-full h-full object-cover">
-               <div v-else class="w-full h-full flex items-center justify-center text-gray-300 text-2xl"><i class="fas fa-gift"></i></div>
-               
-               <!-- 購買狀態勾選 -->
-               <button @click="toggleBought(item)" class="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all" :class="item.isbought ? 'bg-green-500 text-white' : 'bg-white text-gray-300'">
-                 <i class="fas fa-check"></i>
-               </button>
-             </div>
-             <div class="p-3">
-               <h3 class="font-bold text-gray-800 text-sm mb-1 truncate">{{ item.item }}</h3>
-               <div class="flex justify-between items-center">
-                 <span class="text-xs font-mono text-purple-600 font-bold">¥{{ Number(item.estprice).toLocaleString() }}</span>
-                 <button @click="deleteShopping(item.id)" class="text-gray-300 hover:text-red-400 text-xs"><i class="fas fa-trash"></i></button>
-               </div>
-             </div>
-             <div v-if="item.isbought" class="absolute inset-0 bg-white/60 flex items-center justify-center pointer-events-none">
-               <span class="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold transform -rotate-12 shadow-lg">BOUGHT</span>
-             </div>
-          </div>
-        </div>
+        <button @click="locateUser" class="w-full mt-2 bg-blue-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-200">
+          <i class="fas fa-location-arrow mr-2"></i>定位我的位置
+        </button>
       </div>
+
+      <!-- (C) 記帳 (還原您熟悉的介面) -->
+      <div v-show="currentTab === 'record'">
+         <div class="glass-card p-5 rounded-3xl mb-4 relative overflow-hidden">
+            <div class="absolute -right-5 -top-5 w-24 h-24 bg-pink-100 rounded-full opacity-50"></div>
+            <p class="text-xs text-gray-400 font-bold uppercase mb-1">Total Expenses</p>
+            <div class="flex items-baseline gap-2">
+              <span class="text-3xl font-bold text-gray-800 font-mono">NT$ {{ Math.round(totalExpense).toLocaleString() }}</span>
+            </div>
+         </div>
+
+         <!-- 新增按鈕區 -->
+         <button @click="openExpenseModal" class="w-full bg-gray-800 text-white py-4 rounded-2xl font-bold shadow-xl shadow-gray-300 flex justify-center items-center gap-2 mb-6 pop-btn">
+           <span>記一筆</span> <i class="fas fa-pen"></i>
+         </button>
+
+         <!-- 列表 -->
+         <div class="space-y-3 pb-10">
+           <div v-for="exp in expenses" :key="exp.rowId" class="bg-white p-4 rounded-xl shadow-sm border border-gray-50 flex justify-between items-center">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-pink-50 text-pink-500 flex items-center justify-center font-bold text-xs">
+                  {{ exp.date ? exp.date.substring(5) : '-' }}
+                </div>
+                <div>
+                  <div class="font-bold text-gray-700 text-sm">{{ exp.item }}</div>
+                  <div class="text-[10px] text-gray-400">{{ exp.payer }} 付款</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-gray-800 font-mono">{{ Number(exp.amount).toLocaleString() }}</div>
+                <button @click="deleteExpense(exp.rowId)" class="text-gray-300 hover:text-red-400 text-xs p-1"><i class="fas fa-trash"></i></button>
+              </div>
+           </div>
+         </div>
+      </div>
+
+      <!-- (D) 結算 (還原設計) -->
+      <div v-show="currentTab === 'settlement'" class="space-y-4">
+         <div class="bg-gradient-to-br from-pink-500 to-rose-400 text-white p-6 rounded-[2rem] shadow-xl shadow-pink-200">
+            <div class="text-center">
+               <div class="text-pink-100 text-sm font-bold opacity-80">總花費</div>
+               <div class="text-4xl font-bold font-mono mt-1">NT$ {{ Math.round(totalExpense).toLocaleString() }}</div>
+            </div>
+         </div>
+         
+         <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+            <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-exchange-alt text-blue-400"></i> 建議轉帳</h3>
+            <div v-if="settlements.length === 0" class="text-center py-6 text-green-500 font-bold text-sm">帳務已平衡 🎉</div>
+            <div class="space-y-3">
+               <div v-for="s in settlements" class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                  <div class="flex items-center gap-2">
+                     <span class="font-bold text-gray-600">{{ s.from }}</span>
+                     <i class="fas fa-arrow-right text-gray-300 text-xs"></i>
+                     <span class="font-bold text-gray-600">{{ s.to }}</span>
+                  </div>
+                  <span class="font-bold text-pink-500 font-mono">NT$ {{ s.amount.toLocaleString() }}</span>
+               </div>
+            </div>
+         </div>
+      </div>
+
+      <!-- (E) 購物清單 (人性化分頁版) -->
+      <div v-show="currentTab === 'shopping'" class="space-y-4">
+         <!-- 人員篩選 Tab -->
+         <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            <button @click="shoppingFilter = 'all'" :class="shoppingFilter === 'all' ? 'bg-purple-500 text-white' : 'bg-white text-gray-500'" class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm transition-colors">全部</button>
+            <button v-for="u in users" :key="u.name" @click="shoppingFilter = u.name" 
+              :class="shoppingFilter === u.name ? 'bg-purple-500 text-white' : 'bg-white text-gray-500'"
+              class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm transition-colors">{{ u.name }}</button>
+         </div>
+
+         <div class="flex justify-end">
+            <button @click="openShoppingModal" class="bg-purple-50 text-purple-600 px-4 py-2 rounded-xl text-xs font-bold hover:bg-purple-100 transition"><i class="fas fa-plus mr-1"></i> 新增願望</button>
+         </div>
+
+         <div class="grid grid-cols-2 gap-3 pb-20">
+            <div v-for="item in filteredShoppingList" :key="item.id" class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 relative group overflow-hidden">
+               <div class="flex justify-between items-start mb-2">
+                  <div class="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md">{{ item.owner }}</div>
+                  <button @click="deleteShopping(item.id)" class="text-gray-200 hover:text-red-400"><i class="fas fa-times"></i></button>
+               </div>
+               <h3 class="font-bold text-gray-800 text-sm mb-1 line-clamp-2" :class="{'line-through text-gray-300': item.isbought}">{{ item.item }}</h3>
+               <div class="text-xs font-mono text-purple-500 font-bold">¥{{ Number(item.estprice).toLocaleString() }}</div>
+               
+               <!-- 買到了按鈕 -->
+               <button @click="toggleBought(item)" class="w-full mt-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                 :class="item.isbought ? 'bg-green-100 text-green-600' : 'bg-gray-50 text-gray-400 hover:bg-purple-50 hover:text-purple-500'">
+                 <i class="fas" :class="item.isbought ? 'fa-check-circle' : 'fa-circle'"></i> {{ item.isbought ? '已購買' : '標記購買' }}
+               </button>
+            </div>
+         </div>
+      </div>
+
     </div>
 
     <!-- Modals (彈出視窗) -->
-    <!-- 共用 Modal 容器 -->
-    <div v-if="modal.show" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div v-if="modal.show" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4" @click.self="modal.show = false">
       <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-[slideUp_0.3s_ease-out]">
-        <h3 class="text-xl font-bold mb-4 text-gray-800">{{ modal.title }}</h3>
-        
-        <!-- 行程表單 -->
+        <h3 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
+          <span class="w-1 h-6 bg-pink-500 rounded-full"></span> {{ modal.title }}
+        </h3>
+
+        <!-- 1. 行程表單 -->
         <div v-if="modal.type === 'itinerary'" class="space-y-3">
-          <input v-model="formItinerary.title" placeholder="行程名稱 (如: 固力果跑跑人)" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none focus:ring-2 ring-pink-200">
-          <div class="flex gap-2">
-            <input type="date" v-model="formItinerary.date" class="flex-1 bg-gray-50 p-3 rounded-xl text-sm outline-none">
-            <select v-model="formItinerary.type" class="bg-gray-50 p-3 rounded-xl text-sm outline-none">
-              <option value="spot">景點</option>
-              <option value="food">美食</option>
-              <option value="transport">交通</option>
-              <option value="shopping">購物</option>
-            </select>
-          </div>
-          <div class="flex gap-2">
-            <input type="time" v-model="formItinerary.starttime" class="flex-1 bg-gray-50 p-3 rounded-xl text-sm outline-none">
-            <input type="time" v-model="formItinerary.endtime" class="flex-1 bg-gray-50 p-3 rounded-xl text-sm outline-none">
-          </div>
-          <input v-model="formItinerary.location" placeholder="地點名稱 (用於地圖顯示)" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
-          <!-- 經緯度簡易輸入 (進階) -->
-          <div class="flex gap-2">
-             <input v-model="formItinerary.lat" placeholder="緯度 Lat (選填)" class="flex-1 bg-gray-50 p-3 rounded-xl text-xs outline-none">
-             <input v-model="formItinerary.lng" placeholder="經度 Lng (選填)" class="flex-1 bg-gray-50 p-3 rounded-xl text-xs outline-none">
-          </div>
-          <button @click="submitItinerary" class="w-full bg-pink-500 text-white py-3 rounded-xl font-bold mt-2">儲存行程</button>
-        </div>
-
-        <!-- 購物表單 -->
-        <div v-if="modal.type === 'shopping'" class="space-y-3">
-           <input v-model="formShopping.item" placeholder="商品名稱" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
-           <input type="number" v-model="formShopping.estprice" placeholder="預估日幣價格" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
-           <input v-model="formShopping.image" placeholder="圖片網址 (可選)" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
-           <button @click="submitShopping" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold mt-2">加入清單</button>
-        </div>
-
-        <!-- 記帳表單 (簡易版) -->
-        <div v-if="modal.type === 'expense'" class="space-y-3">
-           <input v-model="formExpense.item" placeholder="項目" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
-           <input type="number" v-model="formExpense.amount" placeholder="金額 (TWD)" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
-           <select v-model="formExpense.payer" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
-             <option value="" disabled>誰付錢?</option>
-             <option v-for="u in users" :value="u.name">{{u.name}}</option>
-           </select>
-           <div class="text-xs text-gray-400">分帳人 (預設全選):</div>
-           <div class="flex flex-wrap gap-2">
-             <button v-for="u in users" @click="toggleExpBen(u.name)" 
-               :class="formExpense.beneficiaries.includes(u.name) ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-400'"
-               class="px-2 py-1 rounded-full text-xs transition">{{ u.name }}</button>
+           <input v-model="formItinerary.title" placeholder="行程標題 (如: 環球影城)" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none font-bold focus:ring-2 ring-pink-100">
+           <div class="flex gap-2">
+             <select v-model="formItinerary.type" class="bg-gray-50 p-3 rounded-xl text-sm outline-none w-1/3">
+               <option value="spot">景點</option><option value="food">美食</option><option value="shopping">購物</option><option value="transport">交通</option>
+             </select>
+             <input type="time" v-model="formItinerary.starttime" class="bg-gray-50 p-3 rounded-xl text-sm outline-none flex-1 text-center">
+             <span class="py-3 text-gray-300">-</span>
+             <input type="time" v-model="formItinerary.endtime" class="bg-gray-50 p-3 rounded-xl text-sm outline-none flex-1 text-center">
            </div>
-           <button @click="submitExpense" class="w-full bg-pink-500 text-white py-3 rounded-xl font-bold mt-2">記帳</button>
+           <input v-model="formItinerary.location" placeholder="地點名稱 (用於地圖)" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none">
+           <textarea v-model="formItinerary.note" placeholder="備註 (選填)" rows="2" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none"></textarea>
+           
+           <div class="flex gap-2 pt-2">
+             <button @click="modal.show = false" class="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold text-sm">取消</button>
+             <button @click="submitItinerary" class="flex-1 bg-pink-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-pink-200">儲存</button>
+           </div>
         </div>
 
-        <button @click="modal.show = false" class="w-full text-gray-400 text-sm mt-3">取消</button>
+        <!-- 2. 記帳表單 -->
+        <div v-if="modal.type === 'expense'" class="space-y-3">
+           <input v-model="formExpense.item" placeholder="消費項目" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none font-bold">
+           <div class="relative">
+             <span class="absolute left-4 top-3 text-gray-400 text-sm font-bold">NT$</span>
+             <input type="number" v-model="formExpense.amount" placeholder="0" class="w-full bg-gray-50 p-3 pl-12 rounded-xl text-xl font-mono font-bold outline-none text-gray-800">
+           </div>
+           
+           <div class="flex gap-2 items-center overflow-x-auto pb-1 no-scrollbar">
+             <span class="text-xs text-gray-400 whitespace-nowrap">付款:</span>
+             <button v-for="u in users" @click="formExpense.payer = u.name"
+               :class="formExpense.payer === u.name ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500'"
+               class="px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap">{{ u.name }}</button>
+           </div>
+
+           <div class="bg-gray-50 p-3 rounded-xl">
+             <div class="flex justify-between items-center mb-2">
+               <span class="text-xs text-gray-400">分帳對象</span>
+               <button @click="toggleAllExpBen" class="text-[10px] text-blue-500 font-bold">全選/全消</button>
+             </div>
+             <div class="flex flex-wrap gap-2">
+               <button v-for="u in users" @click="toggleExpBen(u.name)" 
+                 :class="formExpense.beneficiaries.includes(u.name) ? 'bg-pink-500 text-white shadow-md' : 'bg-white text-gray-400 border border-gray-200'"
+                 class="px-3 py-1.5 rounded-full text-xs font-bold transition">{{ u.name }}</button>
+             </div>
+           </div>
+           <button @click="submitExpense" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold mt-2 shadow-lg">確認記帳</button>
+        </div>
+
+        <!-- 3. 購物表單 -->
+        <div v-if="modal.type === 'shopping'" class="space-y-3">
+           <input v-model="formShopping.item" placeholder="想買什麼?" class="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none font-bold">
+           <div class="flex gap-2">
+             <input type="number" v-model="formShopping.estprice" placeholder="預算(日幣)" class="flex-1 bg-gray-50 p-3 rounded-xl text-sm outline-none">
+             <select v-model="formShopping.owner" class="flex-1 bg-gray-50 p-3 rounded-xl text-sm outline-none">
+                <option v-for="u in users" :value="u.name">{{u.name}}</option>
+             </select>
+           </div>
+           <button @click="submitShopping" class="w-full bg-purple-500 text-white py-3 rounded-xl font-bold mt-2 shadow-lg shadow-purple-200">加入清單</button>
+        </div>
+
       </div>
     </div>
 
   </div>
 
-  <!-- ================= JS 區域 (可存為 app.js) ================= -->
+  <!-- 邏輯腳本 -->
   <script>
     const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
-
-    // 使用您提供的正確網址
+    // 您的 API 網址 (維持不變)
     const API_URL = "https://script.google.com/macros/s/AKfycbzD0COm2xYm2aqt8-Xap6og3XWPOnPp3P4YsKYFbRofWAUUOFswPtRJUYCp7NLPLW_tAA/exec";
 
     createApp({
       setup() {
-        // --- 狀態 ---
         const currentTab = ref('itinerary');
         const loading = ref(false);
-        const loadingMessage = ref('資料同步中...');
+        const loadingMessage = ref('載入中...');
         const showRetryBtn = ref(false);
-        const selectedDate = ref('2025-05-20'); // 改為可能的畢業旅行日期
-        const tripDays = ['2025-05-20', '2025-05-21', '2025-05-22', '2025-05-23', '2025-05-24'];
         
+        // 日期設定：2025/12/17 - 12/22
+        const selectedDate = ref('2025-12-17');
+        const tripDays = ['2025-12-17', '2025-12-18', '2025-12-19', '2025-12-20', '2025-12-21', '2025-12-22'];
+        
+        const tabs = [
+          {id: 'itinerary', name: '行程', icon: 'fas fa-calendar-alt'},
+          {id: 'map', name: '地圖', icon: 'fas fa-map'},
+          {id: 'record', name: '記帳', icon: 'fas fa-pen'},
+          {id: 'settlement', name: '結算', icon: 'fas fa-calculator'},
+          {id: 'shopping', name: '購物', icon: 'fas fa-shopping-bag'}
+        ];
+
         const itinerary = ref([]);
         const expenses = ref([]);
         const shoppingList = ref([]);
         const users = ref([]);
+        const shoppingFilter = ref('all');
         
+        // 個人頁面用
+        const myIdentity = ref(localStorage.getItem('myIdentity') || '');
+        const paidMap = ref({});
+        const shouldPayMap = ref({});
+        const settlements = ref([]);
+
         const modal = reactive({ show: false, type: '', title: '' });
         const formItinerary = reactive({});
         const formShopping = reactive({});
-        const formExpense = reactive({ beneficiaries: [] });
+        const formExpense = reactive({ payer: '', beneficiaries: [], amount: '' });
 
         let map = null;
-        let markers = [];
 
-        // --- API 呼叫 ---
-        const runGAS = async (op, data = {}) => {
+        // --- Core ---
+        const runGAS = async (op, argsOrData = null) => {
           try {
             loading.value = true;
             showRetryBtn.value = false;
-            loadingMessage.value = '連線中...';
-            
-            // 設定 15 秒 timeout 防止無限載入
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-            const opts = op.startsWith('get') ? { signal: controller.signal } : {
+            const payload = { op };
+            // 判斷舊版/新版參數
+            if (['addExpense', 'editExpense', 'deleteExpense', 'updateUserPhoto'].includes(op)) {
+               payload.args = Array.isArray(argsOrData) ? argsOrData : [argsOrData];
+            } else {
+               payload.data = argsOrData;
+            }
+            const res = await fetch(API_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({ op, data }),
-              signal: controller.signal
-            };
-            
-            const url = op.startsWith('get') ? `${API_URL}?op=${op}` : API_URL;
-            
-            const res = await fetch(url, opts);
-            clearTimeout(timeoutId);
-
-            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-            
-            const json = await res.json();
-            return json;
+              body: JSON.stringify(payload)
+            });
+            return await res.json();
           } catch (e) {
-            console.error("API Error:", e);
-            if (e.name === 'AbortError') {
-              Swal.fire('連線逾時', '請檢查網路或確認後端 Apps Script 是否已部署為「新版本」', 'error');
-            } else {
-              Swal.fire('載入失敗', `無法連接後端資料庫\n請確認 Apps Script 已部署為 [新版本]`, 'error');
-            }
+            console.error(e);
+            loadingMessage.value = "連線失敗";
             showRetryBtn.value = true;
-            loadingMessage.value = '連線失敗';
-            return { success: false }; // Return fail object but don't crash
+            return { success: false };
           } finally {
             loading.value = false;
           }
@@ -418,202 +436,180 @@
 
         const loadAllData = async () => {
           loading.value = true;
-          loadingMessage.value = '讀取資料中...';
-          
           try {
-            const res = await runGAS('getData');
-            
-            // 安全檢查：確認回傳資料結構正確
-            if (res && res.expenses) {
-              expenses.value = Array.isArray(res.expenses) ? res.expenses.reverse() : [];
-              users.value = Array.isArray(res.users) ? res.users : [];
-              itinerary.value = Array.isArray(res.itinerary) ? res.itinerary : [];
-              shoppingList.value = Array.isArray(res.shopping) ? res.shopping : [];
+            const res = await fetch(`${API_URL}?op=getAllData`).then(r => r.json());
+            if (res) {
+              expenses.value = (res.expenses || []).reverse();
+              users.value = res.users || [];
+              itinerary.value = res.itinerary || [];
+              shoppingList.value = res.shopping || [];
               
-              if (users.value.length > 0) formExpense.beneficiaries = users.value.map(u => u.name);
-            } else if (res && res.status === 'error') {
-               // 後端有回傳但報錯
-               console.error("Backend Error:", res.message);
-               Swal.fire('後端錯誤', res.message, 'error');
-            } else {
-               // 可能是舊版後端回傳了不一樣的結構
-               console.warn("Unexpected Data Structure", res);
-               Swal.fire('版本不符', '偵測到後端程式碼可能是舊版，請至 Apps Script 建立「新版部署」。', 'warning');
+              if (users.value.length > 0) {
+                if(!formExpense.payer) formExpense.payer = users.value[0].name;
+                if(!formShopping.owner) formShopping.owner = users.value[0].name;
+                // Default select all for expense
+                if(formExpense.beneficiaries.length === 0) formExpense.beneficiaries = users.value.map(u => u.name);
+              }
+              calculateSettlement();
             }
-          } catch (err) {
-             console.error("Data Processing Error:", err);
-          } finally {
-             loading.value = false;
-          }
+          } catch(e) { console.error(e); showRetryBtn.value = true; } 
+          finally { loading.value = false; }
         };
 
         // --- Computed ---
         const filteredItinerary = computed(() => {
-          return itinerary.value
-            .filter(i => i.date === selectedDate.value)
-            .sort((a, b) => a.starttime.localeCompare(b.starttime));
+          return itinerary.value.filter(i => i.date === selectedDate.value).sort((a,b) => a.starttime.localeCompare(b.starttime));
         });
-
         const totalExpense = computed(() => expenses.value.reduce((sum, e) => sum + Number(e.amount), 0));
+        const filteredShoppingList = computed(() => {
+          if (shoppingFilter.value === 'all') return shoppingList.value;
+          return shoppingList.value.filter(i => i.owner === shoppingFilter.value);
+        });
+        const myExpenses = computed(() => !myIdentity.value ? [] : expenses.value.filter(e => e.beneficiaries.includes(myIdentity.value)));
+        const myInfo = computed(() => users.value.find(u => u.name === myIdentity.value));
 
-        // --- Methods: Itinerary ---
-        const formatMonthDay = (dateStr) => {
-          const d = new Date(dateStr);
-          return `${d.getMonth()+1}/${d.getDate()}`;
+        // --- Utils ---
+        const formatMonthDay = (d) => { const date = new Date(d); return `${date.getMonth()+1}/${date.getDate()}`; };
+        
+        // --- Shopping ---
+        const openShoppingModal = () => {
+          modal.type = 'shopping'; modal.title = '新增購物清單'; modal.show = true;
+          Object.assign(formShopping, { item: '', estprice: '', owner: formShopping.owner || '' });
         };
-
-        const getCategoryColor = (type) => {
-          const map = { transport: 'bg-blue-500', food: 'bg-orange-500', spot: 'bg-pink-500', shopping: 'bg-purple-500' };
-          return map[type] || 'bg-gray-400';
+        const submitShopping = async () => {
+          const res = await runGAS('addShopping', formShopping);
+          if(res.success) { modal.show = false; loadAllData(); }
         };
-        const getCategoryIcon = (type) => {
-          const map = { transport: 'fas fa-subway', food: 'fas fa-utensils', spot: 'fas fa-camera', shopping: 'fas fa-shopping-bag' };
-          return map[type] || 'fas fa-map-marker-alt';
+        const toggleBought = async (item) => {
+          item.isbought = !item.isbought;
+          await runGAS('toggleShopping', { id: item.id, isBought: item.isbought });
         };
-        const getCategoryBorder = (type) => {
-           const map = { transport: 'border-blue-500', food: 'border-orange-500', spot: 'border-pink-500', shopping: 'border-purple-500' };
-           return map[type] || 'border-gray-400';
-        };
-
-        const openItineraryModal = (item = null) => {
-          modal.type = 'itinerary';
-          modal.title = item ? '編輯行程' : '新增行程';
-          modal.show = true;
-          if (item) Object.assign(formItinerary, item);
-          else Object.assign(formItinerary, { id: '', date: selectedDate.value, starttime: '', endtime: '', title: '', type: 'spot', location: '', lat: '', lng: '', note: '' });
-        };
-
-        const submitItinerary = async () => {
-          const op = formItinerary.id ? 'updateItinerary' : 'addItinerary';
-          const res = await runGAS(op, formItinerary);
-          if (res.success) {
-            modal.show = false;
-            loadAllData();
-          }
-        };
-
-        const deleteItinerary = async (id) => {
-          if(!confirm("確定刪除?")) return;
-          const res = await runGAS('deleteItinerary', { id });
+        const deleteShopping = async (id) => {
+          if(!confirm('刪除?')) return;
+          const res = await runGAS('deleteShopping', { id });
           if(res.success) loadAllData();
         };
 
-        // --- Methods: Map ---
-        const initMap = () => {
-          if (map) return;
-          // 設定大阪的座標 (Osaka)
-          map = L.map('map').setView([34.6937, 135.5023], 12); 
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-          }).addTo(map);
-          updateMapMarkers();
-        };
-
-        const updateMapMarkers = () => {
-          if (!map) return;
-          // Clear old markers
-          markers.forEach(m => map.removeLayer(m));
-          markers = [];
-
-          // Add itinerary markers
-          filteredItinerary.value.forEach(item => {
-            if (item.lat && item.lng) {
-              const marker = L.marker([item.lat, item.lng])
-                .addTo(map)
-                .bindPopup(`<b>${item.starttime} ${item.title}</b><br>${item.location}`);
-              markers.push(marker);
-            }
-          });
-        };
-        
-        const locateUser = () => {
-          if(!map) return;
-          map.locate({setView: true, maxZoom: 16});
-          map.on('locationfound', e => {
-             L.marker(e.latlng).addTo(map).bindPopup("你在這裡").openPopup();
-             L.circle(e.latlng, e.accuracy/2).addTo(map);
-          });
-        };
-
-        // --- Methods: Shopping ---
-        const openShoppingModal = () => {
-          modal.type = 'shopping'; modal.title = '新增願望清單'; modal.show = true;
-          Object.assign(formShopping, { item: '', estprice: '', image: '' });
-        };
-        const submitShopping = async () => {
-           const res = await runGAS('addShopping', formShopping);
-           if(res.success) { modal.show = false; loadAllData(); }
-        };
-        const toggleBought = async (item) => {
-           item.isbought = !item.isbought; // Optimistic update
-           await runGAS('toggleShopping', { id: item.id, isBought: item.isbought });
-        };
-        const deleteShopping = async (id) => {
-           if(!confirm("刪除?")) return;
-           const res = await runGAS('deleteShopping', { id });
-           if(res.success) loadAllData();
-        };
-
-        // --- Methods: Expenses ---
+        // --- Expense ---
         const openExpenseModal = () => {
-           modal.type = 'expense'; modal.title = '快速記帳'; modal.show = true;
-           Object.assign(formExpense, { item: '', amount: '', payer: users.value[0]?.name || '' });
+          modal.type = 'expense'; modal.title = '新增消費'; modal.show = true;
+          Object.assign(formExpense, { item: '', amount: '' }); // Reset amount/item, keep payer/ben
         };
         const toggleExpBen = (name) => {
-           const idx = formExpense.beneficiaries.indexOf(name);
-           if(idx === -1) formExpense.beneficiaries.push(name);
-           else formExpense.beneficiaries.splice(idx, 1);
+          const i = formExpense.beneficiaries.indexOf(name);
+          if(i===-1) formExpense.beneficiaries.push(name); else formExpense.beneficiaries.splice(i,1);
+        };
+        const toggleAllExpBen = () => {
+          formExpense.beneficiaries = formExpense.beneficiaries.length === users.value.length ? [] : users.value.map(u=>u.name);
         };
         const submitExpense = async () => {
-           // 簡單包裝資料結構以符合後端 addRow 格式
-           const payload = {
-              Date: new Date(),
-              Payer: formExpense.payer,
-              Beneficiaries: formExpense.beneficiaries,
-              Item: formExpense.item,
-              Amount: formExpense.amount,
-              UnitPrice: formExpense.amount, Qty: 1
-           };
-           const res = await runGAS('addExpense', payload);
-           if(res.success) { modal.show = false; loadAllData(); }
+          // 傳送符合舊版格式
+          const payload = {
+            date: new Date(),
+            payer: formExpense.payer,
+            beneficiaries: formExpense.beneficiaries,
+            item: formExpense.item,
+            unitPrice: formExpense.amount,
+            quantity: 1,
+            note: ''
+          };
+          const res = await runGAS('addExpense', payload);
+          if(res.success) { modal.show = false; loadAllData(); }
         };
         const deleteExpense = async (rowId) => {
-           if(!confirm("刪除此筆記帳?")) return;
-           const res = await runGAS('deleteExpense', { rowId });
-           if(res.success) loadAllData();
+          if(!confirm('刪除?')) return;
+          await runGAS('deleteExpense', rowId);
+          loadAllData();
         };
 
-        // --- Watchers & Hooks ---
-        watch(currentTab, (newTab) => {
-          if (newTab === 'map') {
+        // --- Itinerary ---
+        const openItineraryModal = (item = null) => {
+          modal.type = 'itinerary'; modal.title = item ? '編輯行程' : '新增行程'; modal.show = true;
+          if(item) Object.assign(formItinerary, item);
+          else Object.assign(formItinerary, { id: '', date: selectedDate.value, type: 'spot', starttime: '', endtime: '', title: '', location: '', note: '' });
+        };
+        const submitItinerary = async () => {
+          const res = await runGAS('addItinerary', formItinerary);
+          if(res.success) { modal.show = false; loadAllData(); }
+        };
+        const deleteItinerary = async (id) => {
+          if(!confirm('刪除?')) return;
+          const res = await runGAS('deleteItinerary', { id });
+          if(res.success) loadAllData();
+        };
+        const getCategoryClass = (t) => ({transport:'bg-blue-100 text-blue-600', food:'bg-orange-100 text-orange-600', shopping:'bg-purple-100 text-purple-600', spot:'bg-pink-100 text-pink-600'}[t] || 'bg-gray-100 text-gray-500');
+
+        // --- Settlement Logic (From your code) ---
+        const calculateSettlement = () => {
+           let paid={}, should={}, total=0;
+           users.value.forEach(u => { paid[u.name]=0; should[u.name]=0; });
+           expenses.value.forEach(ex => {
+             total += ex.amount;
+             if(paid[ex.payer]!==undefined) paid[ex.payer] += ex.amount;
+             const len = ex.beneficiaries.length;
+             if(len>0) { const split = ex.amount/len; ex.beneficiaries.forEach(b => { if(should[b]!==undefined) should[b]+=split; }); }
+           });
+           paidMap.value = paid; shouldPayMap.value = should;
+           let bals = users.value.map(u => ({name: u.name, amt: paid[u.name]-should[u.name]})).filter(x=>Math.abs(x.amt)>1);
+           bals.sort((a,b)=>a.amt-b.amt);
+           let res=[]; let i=0, j=bals.length-1;
+           while(i<j) {
+             let d=bals[i], c=bals[j], amt=Math.min(Math.abs(d.amt), c.amt);
+             res.push({from:d.name, to:c.name, amount:Math.round(amt)});
+             d.amt+=amt; c.amt-=amt; if(Math.abs(d.amt)<1) i++; if(c.amt<1) j--;
+           }
+           settlements.value = res;
+        };
+
+        // --- Map ---
+        const locateUser = () => {
+          if(map) {
+             map.locate({setView: true, maxZoom: 16});
+             map.on('locationfound', e => {
+               L.marker(e.latlng).addTo(map).bindPopup("你在這裡").openPopup();
+             });
+          }
+        };
+        const panTo = (lat, lng) => {
+           if(map) {
+             map.flyTo([lat, lng], 16);
+             L.popup().setLatLng([lat, lng]).setContent("📍 目標位置").openOn(map);
+           }
+        };
+        
+        watch(currentTab, (v) => {
+          if(v === 'map') {
             nextTick(() => {
-               initMap();
-               setTimeout(() => map.invalidateSize(), 100); // Fix map render issue
-               updateMapMarkers();
+              if(!map) {
+                // 使用 CartoDB Voyager 風格 (更簡潔好看)
+                map = L.map('map').setView([34.6937, 135.5022], 13);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                }).addTo(map);
+              }
+              map.invalidateSize();
+              // 清除舊標記
+              map.eachLayer((layer) => { if(layer instanceof L.Marker) map.removeLayer(layer); });
+              // 新增行程標記
+              filteredItinerary.value.forEach(i => {
+                if(i.lat && i.lng) L.marker([i.lat, i.lng]).addTo(map).bindPopup(i.title);
+              });
             });
           }
         });
-        
-        watch(selectedDate, () => {
-           if (currentTab.value === 'map') updateMapMarkers();
-        });
 
-        onMounted(() => {
-          loadAllData();
-        });
+        onMounted(loadAllData);
 
         return {
           currentTab, switchTab: (t) => currentTab.value = t,
           loading, loadingMessage, showRetryBtn, loadAllData,
-          tripDays, selectedDate, formatMonthDay,
-          filteredItinerary, expenses, shoppingList, users,
-          totalExpense,
-          modal, formItinerary, formShopping, formExpense,
-          getCategoryColor, getCategoryIcon, getCategoryBorder,
-          openItineraryModal, submitItinerary, deleteItinerary,
-          initMap, locateUser,
+          tripDays, selectedDate, formatMonthDay, tabs,
+          expenses, users, shoppingList, shoppingFilter, filteredShoppingList, filteredItinerary,
+          totalExpense, modal, formItinerary, formShopping, formExpense,
+          openItineraryModal, submitItinerary, deleteItinerary, getCategoryClass,
           openShoppingModal, submitShopping, toggleBought, deleteShopping,
-          openExpenseModal, submitExpense, toggleExpBen, deleteExpense
+          openExpenseModal, submitExpense, deleteExpense, toggleExpBen, toggleAllExpBen,
+          locateUser, panTo, settlements, paidMap, shouldPayMap, myIdentity
         };
       }
     }).mount('#app');
