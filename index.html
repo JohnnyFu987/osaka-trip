@@ -177,7 +177,7 @@
               <div class="bg-white rounded-[2.5rem] p-8 text-center relative mt-12 card-shadow border border-white">
                 <div class="absolute inset-0 rounded-[2.5rem] overflow-hidden -z-10 pointer-events-none"><div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-pink-50 to-transparent opacity-60"></div></div>
                 <div class="relative -mt-20 mb-4 z-10"><div class="w-28 h-28 mx-auto rounded-full bg-white p-1.5 shadow-xl relative group"><div class="w-full h-full rounded-full overflow-hidden bg-gray-100 relative"><img v-if="myInfo && myInfo.photo" :src="myInfo.photo" class="w-full h-full object-cover" referrerpolicy="no-referrer"><div v-else class="w-full h-full flex items-center justify-center text-gray-300 text-4xl"><i class="fas fa-user"></i></div><div @click="changePhoto" class="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity backdrop-blur-[2px]"><i class="fas fa-camera"></i></div></div></div></div>
-                <div class="mb-6 relative z-10"><select v-model="shopUser" class="text-3xl font-black text-center text-slate-800 bg-transparent border-none outline-none cursor-pointer hover:text-pink-500 transition-colors appearance-none pr-6"><option v-for="u in users" :value="u.name">{{ u.name }}</option></select><i class="fas fa-chevron-down text-sm text-gray-300 absolute top-1/2 -translate-y-1/2 right-1/2 -mr-16 pointer-events-none"></i></div>
+                <div class="mb-6 relative z-10"><select v-model="shopUser" class="text-3xl font-black text-center text-slate-800 bg-transparent border-none outline-none cursor-pointer hover:text-pink-50 transition-colors appearance-none pr-6"><option v-for="u in users" :value="u.name">{{ u.name }}</option></select><i class="fas fa-chevron-down text-sm text-gray-300 absolute top-1/2 -translate-y-1/2 right-1/2 -mr-16 pointer-events-none"></i></div>
                 <div class="grid grid-cols-2 gap-4"><div class="bg-blue-50 p-5 rounded-[1.5rem] border border-blue-100 relative overflow-hidden"><div class="relative z-10"><div class="text-[10px] text-blue-400 font-bold uppercase mb-1 tracking-wider">Total Paid</div><div class="text-2xl font-black text-blue-600 font-mono">{{ Math.round(paidMap[shopUser] || 0).toLocaleString() }}</div><div class="text-[10px] text-blue-300 mt-1 font-bold">代墊金額</div></div></div><div class="bg-pink-50 p-5 rounded-[1.5rem] border border-pink-100 relative overflow-hidden"><div class="relative z-10"><div class="text-[10px] text-pink-400 font-bold uppercase mb-1 tracking-wider">Total Cost</div><div class="text-2xl font-black text-pink-600 font-mono">{{ Math.round(shouldPayMap[shopUser] || 0).toLocaleString() }}</div><div class="text-[10px] text-pink-300 mt-1 font-bold">實際花費</div></div></div></div>
               </div>
             </div>
@@ -260,6 +260,7 @@
     </div>
 
     <script>
+      // 請將此處的 API_URL 替換為您部署後端 GAS 的網址
       const API_URL = "https://script.google.com/macros/s/AKfycbzD0COm2xYm2aqt8-Xap6og3XWPOnPp3P4YsKYFbRofWAUUOFswPtRJUYCp7NLPLW_tAA/exec"; 
       const { createApp, ref, reactive, computed, onMounted, nextTick, watch } = Vue;
 
@@ -288,6 +289,7 @@
           const safeDateStr = (raw) => { if(!raw) return ''; let s=String(raw); if(s.includes('T')) s=s.split('T')[0]; return s.replace(/\//g,'-'); };
           const formatFullDate = (d) => { const x=new Date(d); if(isNaN(x.getTime())) return d; return `${(x.getMonth()+1).toString().padStart(2,'0')}/${x.getDate().toString().padStart(2,'0')} (${['日','一','二','三','四','五','六'][x.getDay()]})`; };
           const formatTimeDisplay = (t) => { if(!t) return ''; const s=String(t); if(s.includes('T')){ const d=new Date(s); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');} if(s.length>5) return s.substring(0,5); return s; };
+          const formatDateShort = (d) => { const x=new Date(d); return `${(x.getMonth()+1)}/${x.getDate()}`; };
 
           const dailyItinerary = computed(() => (itinerary.value || []).filter(i => safeDateStr(i.date) === selectedDay.value).sort((a,b) => formatTimeDisplay(a.startTime).localeCompare(formatTimeDisplay(b.startTime))));
           const dailyMapPoints = computed(() => dailyItinerary.value.filter(i => i.lat && i.lng));
@@ -319,27 +321,38 @@
           const shopItemInput = ref('');
           const filteredShoppingList = computed(() => { const list = shoppingList.value || []; if(!shopUser.value && (users.value || []).length > 0) shopUser.value = users.value[0].name; return list.filter(s => s.user === shopUser.value); });
           
-          const paidMap = computed(() => { const m={}; (users.value||[]).forEach(u=>m[u.name]=0); (expenses.value||[]).forEach(e=>{ if(m[e.payer]!==undefined) m[e.payer]+=e.amount; }); return m; });
-          const shouldPayMap = computed(() => { const m={}; (users.value||[]).forEach(u=>m[u.name]=0); (expenses.value||[]).forEach(e=>{ const l=e.beneficiaries.length; if(l>0) e.beneficiaries.forEach(b=>{ if(m[b]!==undefined) m[b]+=e.amount/l; }); }); return m; });
-          const settlements = computed(() => { let paid={}, should={}; (users.value||[]).forEach(u => { paid[u.name]=0; should[u.name]=0; }); (expenses.value||[]).forEach(ex => { if(paid[ex.payer]!==undefined) paid[ex.payer] += ex.amount; const len = ex.beneficiaries.length; if(len>0) { const split = ex.amount/len; ex.beneficiaries.forEach(b => { if(should[b]!==undefined) should[b]+=split; }); } }); let bals = (users.value||[]).map(u => ({name: u.name, amt: paid[u.name]-should[u.name]})).filter(x=>Math.abs(x.amt)>1); bals.sort((a,b)=>a.amt-b.amt); let res=[]; let i=0, j=bals.length-1; while(i<j) { let d=bals[i], c=bals[j], amt=Math.min(Math.abs(d.amt), c.amt); res.push({from:d.name, to:c.name, amount:Math.round(amt)}); d.amt+=amt; c.amt-=amt; if(Math.abs(d.amt)<1) i++; if(c.amt<1) j--; } return res; });
+          const paidMap = computed(() => { const m={}; (users.value||[]).forEach(u=>m[u.name]=0); (expenses.value||[]).forEach(e=>{ if(m[e.payer]!==undefined) m[e.payer]+=Number(e.amount); }); return m; });
+          const shouldPayMap = computed(() => { const m={}; (users.value||[]).forEach(u=>m[u.name]=0); (expenses.value||[]).forEach(e=>{ const l=e.beneficiaries.length; if(l>0) e.beneficiaries.forEach(b=>{ if(m[b]!==undefined) m[b]+=Number(e.amount)/l; }); }); return m; });
+          
+          const settlements = computed(() => { let paid={}, should={}; (users.value||[]).forEach(u => { paid[u.name]=0; should[u.name]=0; }); (expenses.value||[]).forEach(ex => { if(paid[ex.payer]!==undefined) paid[ex.payer] += Number(ex.amount); const len = ex.beneficiaries.length; if(len>0) { const split = Number(ex.amount)/len; ex.beneficiaries.forEach(b => { if(should[b]!==undefined) should[b]+=split; }); } }); let bals = (users.value||[]).map(u => ({name: u.name, amt: paid[u.name]-should[u.name]})).filter(x=>Math.abs(x.amt)>1); bals.sort((a,b)=>a.amt-b.amt); let res=[]; let i=0, j=bals.length-1; while(i<j) { let d=bals[i], c=bals[j], amt=Math.min(Math.abs(d.amt), c.amt); res.push({from:d.name, to:c.name, amount:Math.round(amt)}); d.amt+=amt; c.amt-=amt; if(Math.abs(d.amt)<1) i++; if(c.amt<1) j--; } return res; });
+          
+          // *** 修正點：加入這個計算總花費的函式 ***
+          const totalTrip = computed(() => (expenses.value || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0));
+          
           const sortedExpenses = computed(() => (expenses.value || []).slice().reverse());
           const myInfo = computed(() => (users.value || []).find(u => u.name === shopUser.value));
 
           const callApi = async (op, args=[]) => { const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({op, args})}); return r.json(); };
           
           const loadData = async () => {
-             try {
+              try {
                 const res = await callApi('getAllData');
                 if (res.status === 'error') throw new Error(res.message);
-                users.value = res.users || []; expenses.value = res.expenses || []; itinerary.value = res.itinerary || []; shoppingList.value = res.shopping || [];
+                
+                users.value = res.users || []; 
+                expenses.value = res.expenses || []; 
+                itinerary.value = res.itinerary || []; 
+                shoppingList.value = res.shopping || [];
+                
                 if(exchangeRate.value===0.22) exchangeRate.value = res.rate || 0.22;
                 if(users.value && users.value.length > 0 && !expenseForm.payer) { expenseForm.payer = users.value[0].name; expenseForm.beneficiaries = users.value.map(u=>u.name); }
                 hasData.value = true;
-             } catch(e) {
+              } catch(e) {
                 console.error("Load Data Error:", e);
+                // 就算失敗也清空資料，避免介面壞掉
                 users.value = []; expenses.value = []; itinerary.value = []; shoppingList.value = [];
-                Swal.fire('部署檢查', '請確認後端已重新部署 (New Deployment) 並更新 API_URL', 'error');
-             } finally { isLoading.value = false; }
+                Swal.fire('連線錯誤', '無法取得資料，請確認後端部署與網址', 'error');
+              } finally { isLoading.value = false; }
           };
 
           const openItinModal = (item) => { showItinModal.value = true; if(item) { Object.assign(itinForm, { ...item, date: safeDateStr(item.date), startTime: formatTimeDisplay(item.startTime), endTime: formatTimeDisplay(item.endTime) }); } else { Object.assign(itinForm, { id: null, date: selectedDay.value, startTime:'09:00', endTime:'', location:'', type:'spot', transport:'', note:'' }); } };
@@ -357,7 +370,7 @@
 
           onMounted(() => { loadData(); fetchWeather(); });
 
-          return { isLoading, hasData, isSubmitting, currentView, moneyTab, isJPY, exchangeRate, users, expenses, itinerary, shoppingList, selectedDay, fixedTripDays, dailyItinerary, dailyMapPoints, showItinModal, itinForm, weatherInfo, getTypeColor, getTypeIcon, getTypeName, formatTimeDisplay, formatFullDate, openItinModal, submitItin, deleteItin, locateMe, flyTo, expenseForm, isAllBen, toggleBen, toggleAllBen, displayTotalTWD, submitExpense, sortedExpenses, paidMap, shouldPayMap, settlements, myInfo, shopUser, shopItemInput, filteredShoppingList, addShopItem, toggleShopItem, deleteShopItem, changePhoto, showEditModal, editForm, openEditModal, toggleEditBen, saveEdit, deleteExp };
+          return { isLoading, hasData, isSubmitting, currentView, moneyTab, isJPY, exchangeRate, users, expenses, itinerary, shoppingList, selectedDay, fixedTripDays, dailyItinerary, dailyMapPoints, showItinModal, itinForm, weatherInfo, getTypeColor, getTypeIcon, getTypeName, formatTimeDisplay, formatFullDate, formatDateShort, openItinModal, submitItin, deleteItin, locateMe, flyTo, expenseForm, isAllBen, toggleBen, toggleAllBen, displayTotalTWD, submitExpense, sortedExpenses, paidMap, shouldPayMap, settlements, totalTrip, myInfo, shopUser, shopItemInput, filteredShoppingList, addShopItem, toggleShopItem, deleteShopItem, changePhoto, showEditModal, editForm, openEditModal, toggleEditBen, saveEdit, deleteExp };
         }
       }).mount('#app');
     </script>
