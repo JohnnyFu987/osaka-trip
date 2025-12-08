@@ -4,237 +4,338 @@
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大阪畢業旅行小幫手</title>
+    
+    <!-- 1. 網站標題 -->
+    <title>大阪畢業旅行旅小幫手</title>
+    <meta name="description" content="自動匯率換算、多人分帳，大阪畢業旅行必備記帳工具！">
+
+    <!-- 2. Open Graph 設定 (讓 LINE/FB 分享連結時有圖片與標題) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="大阪青春畢旅 - 記帳分帳小幫手">
+    <meta property="og:description" content="自動匯率換算、多人分帳，輕鬆搞定畢業旅行帳務！">
+    <!-- 預覽圖片：使用 1200x630 的標準比例，顯示 OSAKA TRIP 字樣 -->
+    <meta property="og:image" content="https://placehold.co/1200x630/ec4899/ffffff.png?text=OSAKA+TRIP&font=montserrat">
+    <!-- 請將下方網址換成您實際的 GitHub Pages 網址 -->
+    <meta property="og:url" content="https://johnnyfu987.github.io/osaka-trip/">
+    
+    <!-- PWA / Mobile Web App 設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="大阪畢旅">
     <meta name="theme-color" content="#ec4899">
+
+    <!-- Icons (手機加入主畫面時的圖示) -->
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/ec4899/ffffff.png?text=Osaka&font=roboto">
+    <link rel="icon" type="image/png" href="https://placehold.co/192x192/ec4899/ffffff.png?text=Osaka&font=roboto">
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap');
-      body { font-family: 'M PLUS Rounded 1c', 'Noto Sans TC', sans-serif; background: #fdf2f8; min-height: 100vh; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+      @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+      
+      body { 
+        font-family: 'M PLUS Rounded 1c', 'Noto Sans TC', sans-serif; 
+        background: linear-gradient(135deg, #fff1f2 0%, #e0f2fe 100%);
+        min-height: 100vh;
+        -webkit-tap-highlight-color: transparent; 
+        color: #475569;
+      }
       ::-webkit-scrollbar { width: 0px; background: transparent; }
-      .glass-header { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); box-shadow: 0 4px 20px rgba(236, 72, 153, 0.1); border-bottom: 1px solid rgba(255, 255, 255, 0.5); }
-      .card-shadow { box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05), 0 2px 6px -2px rgba(0, 0, 0, 0.02); }
-      .nav-btn.active { background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); color: white; box-shadow: 0 4px 10px rgba(236, 72, 153, 0.3); transform: translateY(-1px); }
-      #map { height: 65vh; width: 100%; border-radius: 1.5rem; z-index: 0; }
-      .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; } .fade-enter-from, .fade-leave-to { opacity: 0; }
-      .slide-up-enter-active, .slide-up-leave-active { transition: transform 0.3s ease, opacity 0.3s ease; } .slide-up-enter-from, .slide-up-leave-to { transform: translateY(20px); opacity: 0; }
-      .timeline-line { position: absolute; left: 28px; top: 24px; bottom: -24px; width: 2px; background-color: #fce7f3; z-index: 0; } .last-item .timeline-line { display: none; }
-      .plane-loader { animation: fly 2s infinite ease-in-out; } @keyframes fly { 0% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-10px) rotate(5deg); } 100% { transform: translateY(0px) rotate(0deg); } }
-      .toggle-checkbox:checked { right: 0; border-color: #f472b6; } .toggle-checkbox:checked + .toggle-label { background-color: #f472b6; }
+      
+      .loading-overlay { 
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(255,255,255,0.8); backdrop-filter: blur(5px);
+        display: flex; justify-content: center; align-items: center; z-index: 999; flex-direction: column; 
+      }
+      .toggle-checkbox:checked { right: 0; border-color: #f472b6; }
+      .toggle-checkbox:checked + .toggle-label { background-color: #f472b6; }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 4px 15px rgba(244, 114, 182, 0.15); backdrop-filter: blur(10px);
+      }
+      .pop-btn { transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+      .pop-btn:active { transform: scale(0.95); }
     </style>
   </head>
-  <body class="text-slate-600">
-    <div id="app" class="max-w-md mx-auto min-h-screen relative pb-28">
+  <body>
+    <div id="app" class="max-w-md mx-auto min-h-screen pb-28 relative">
       
-      <!-- Header -->
-      <div class="glass-header sticky top-0 z-50 px-5 pt-12 pb-2 rounded-b-[2rem]">
-        <div class="flex justify-between items-center mb-4">
-          <div>
-            <div class="text-[10px] font-bold text-pink-400 tracking-[0.2em] uppercase mb-0.5 ml-0.5">Osaka Trip</div>
-            <h1 class="text-2xl font-extrabold text-slate-800 flex items-center gap-2 tracking-tight">大阪畢業旅行 <i class="fas fa-graduation-cap text-pink-500 animate-bounce"></i></h1>
-            <div class="text-[10px] text-gray-400 font-bold mt-1 ml-0.5">DEC 17 - DEC 22, 2025</div>
-          </div>
-          <div class="flex bg-white/60 p-1.5 rounded-2xl gap-1 border border-white/50 shadow-inner">
-             <button @click="currentView='itinerary'" :class="{'active': currentView==='itinerary'}" class="nav-btn w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 transition-all duration-300"><i class="far fa-calendar-alt text-sm"></i></button>
-             <button @click="currentView='map'" :class="{'active': currentView==='map'}" class="nav-btn w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 transition-all duration-300"><i class="fas fa-map-marked-alt text-sm"></i></button>
-             <button @click="currentView='trans'" :class="{'active': currentView==='trans'}" class="nav-btn w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 transition-all duration-300"><i class="fas fa-language text-sm"></i></button>
-             <button @click="currentView='money'" :class="{'active': currentView==='money'}" class="nav-btn w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 transition-all duration-300"><i class="fas fa-yen-sign text-sm"></i></button>
-          </div>
+      <!-- Loading -->
+      <div v-if="isLoading" class="loading-overlay">
+        <div class="relative">
+           <i class="fas fa-plane fa-bounce text-5xl text-pink-400 mb-4 drop-shadow-lg"></i>
+           <i class="fas fa-cloud text-blue-200 absolute -top-2 -right-6 text-2xl animate-pulse"></i>
         </div>
-        
-        <div v-if="currentView === 'itinerary' || currentView === 'map'" class="flex justify-between gap-2 overflow-x-auto pb-2 scrollbar-hide pt-1">
-          <button v-for="(d, idx) in fixedTripDays" :key="d" @click="selectedDay = d"
-            :class="selectedDay === d ? 'bg-slate-800 text-white shadow-lg shadow-slate-300/50 scale-105' : 'bg-white text-slate-400 border border-slate-100'"
-            class="flex-1 min-w-[3.8rem] py-2.5 rounded-2xl flex flex-col items-center justify-center transition-all duration-300">
-            <span class="text-[10px] font-bold opacity-70 mb-0.5">{{ d.substring(5).replace('-','/') }}</span>
-            <span class="text-sm font-black tracking-wide">D{{ idx+1 }}</span>
-          </button>
+        <span class="text-pink-500 font-bold text-lg tracking-widest mt-2">OSAKA TRIP</span>
+        <span class="text-gray-400 text-xs">資料同步中...</span>
+      </div>
+
+      <!-- 標題列 -->
+      <div class="sticky top-0 bg-white/90 backdrop-blur-md shadow-sm z-40 pt-10 pb-4 px-5 rounded-b-3xl">
+        <h1 class="text-2xl font-bold text-gray-800 flex justify-center items-center gap-2">
+          <span class="text-pink-500"><i class="fas fa-torii-gate"></i></span>
+          <span>大阪畢業旅行</span>
+          <span class="text-blue-400"><i class="fas fa-paper-plane text-sm"></i></span>
+        </h1>
+        <div class="mt-4 bg-gray-100/80 p-1.5 rounded-2xl flex shadow-inner">
+          <button @click="currentTab='record'" :class="currentTab==='record'?'bg-white text-pink-500 shadow-md transform scale-100':'text-gray-400 scale-95 hover:text-gray-600'" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5"><i class="fas fa-pen-fancy"></i> 記帳</button>
+          <button @click="currentTab='settlement';calculateSettlement()" :class="currentTab==='settlement'?'bg-white text-blue-500 shadow-md transform scale-100':'text-gray-400 scale-95 hover:text-gray-600'" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5"><i class="fas fa-calculator"></i> 結算</button>
+          <button @click="currentTab='personal'" :class="currentTab==='personal'?'bg-white text-yellow-500 shadow-md transform scale-100':'text-gray-400 scale-95 hover:text-gray-600'" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5"><i class="fas fa-user-astronaut"></i> 個人</button>
         </div>
       </div>
 
-      <div class="p-5">
-        <div v-if="isLoading && !hasData" class="fixed inset-0 bg-white/80 backdrop-blur-md z-[999] flex flex-col items-center justify-center">
-          <div class="relative mb-4"><i class="fas fa-plane text-5xl text-pink-500 plane-loader drop-shadow-lg"></i><i class="fas fa-cloud text-3xl text-blue-200 absolute -top-2 -right-6 animate-pulse"></i></div>
-          <p class="text-sm font-bold text-slate-400 tracking-widest">載入旅程中...</p>
+      <!-- 內容區 -->
+      <div class="p-5 space-y-5">
+        
+        <div v-if="loadError" class="bg-red-50 border-2 border-red-200 p-4 rounded-2xl shadow-sm animate-pulse">
+           <p class="text-xs text-red-600 font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> {{ loadError }}</p>
+           <button @click="loadData" class="mt-2 text-xs bg-white border border-red-200 text-red-500 px-3 py-1 rounded-full font-bold shadow-sm">重試連線</button>
         </div>
 
-        <Transition name="slide-up" mode="out-in">
-          <div v-if="currentView === 'itinerary'" class="space-y-5">
-            <div class="bg-white p-5 rounded-[1.5rem] card-shadow border border-white flex justify-between items-center relative overflow-hidden">
-              <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-pink-100 to-transparent rounded-bl-full opacity-50 -mr-4 -mt-4"></div>
-              <div class="relative z-10">
-                <div class="text-xl font-black text-slate-800">{{ selectedDay ? formatFullDate(selectedDay) : 'Trip' }}</div>
-                <div class="text-xs text-gray-400 font-bold mt-1"><i class="fas fa-map-marker-alt text-pink-400 mr-1"></i>大阪市, 日本</div>
-              </div>
-              <div class="flex items-center gap-2 relative z-10">
-                 <div class="text-right">
-                   <div class="text-[10px] font-bold text-gray-400">氣溫</div>
-                   <div class="text-lg font-bold text-slate-600">{{ weatherInfo.temp }}</div>
+        <!-- TAB 1: 記帳 -->
+        <div v-if="currentTab === 'record'" class="space-y-5">
+          <div class="glass-card rounded-3xl p-5 relative overflow-hidden">
+             <div class="absolute -top-10 -right-10 w-32 h-32 bg-pink-100 rounded-full opacity-50 pointer-events-none"></div>
+             <div class="absolute -bottom-10 -left-10 w-24 h-24 bg-blue-100 rounded-full opacity-50 pointer-events-none"></div>
+             <div class="flex justify-between items-center mb-5 relative z-10">
+               <h2 class="font-bold text-gray-700 text-lg flex items-center gap-2">
+                 <div class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-500"><i class="fas fa-plus"></i></div> 新增花費
+               </h2>
+               <div class="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
+                 <div class="relative inline-block w-10 mr-1 align-middle select-none">
+                    <input type="checkbox" id="currency-toggle" v-model="isJPY" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all duration-300" :class="isJPY ? 'right-0 border-pink-400' : 'left-0 border-gray-300'"/>
+                    <label for="currency-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-200 cursor-pointer" :class="isJPY ? 'bg-pink-400' : 'bg-gray-200'"></label>
                  </div>
-                 <i :class="weatherInfo.icon" class="text-3xl text-yellow-400 drop-shadow-sm"></i>
+                 <span class="text-xs font-bold w-8 text-center" :class="isJPY ? 'text-pink-500' : 'text-gray-400'">{{ isJPY ? 'JPY' : 'TWD' }}</span>
+               </div>
+             </div>
+             <div v-if="isJPY" class="mb-4 bg-yellow-50/80 p-2.5 rounded-xl flex justify-between items-center text-xs text-yellow-700 border border-yellow-100 shadow-sm backdrop-blur-sm">
+               <span class="font-bold"><i class="fas fa-coins mr-1"></i>匯率: 1 JPY ≈ </span>
+               <div class="flex items-center gap-1">
+                 <input type="number" v-model.number="exchangeRate" class="w-16 bg-white border border-yellow-200 rounded-lg px-2 py-0.5 text-center font-bold outline-none text-yellow-600" step="0.001"><span class="font-bold">TWD</span>
+               </div>
+               <button @click="fetchRate" class="text-yellow-600 hover:text-yellow-800"><i class="fas fa-sync-alt"></i></button>
+             </div>
+             <div class="space-y-4 relative z-10">
+               <div class="grid grid-cols-2 gap-3">
+                 <div class="bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                   <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Date</label>
+                   <input type="date" v-model="form.date" class="w-full bg-transparent text-gray-700 font-bold text-sm outline-none">
+                 </div>
+                 <div class="bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                   <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Payer</label>
+                   <select v-model="form.payer" class="w-full bg-transparent text-gray-700 font-bold text-sm outline-none">
+                     <option value="" disabled>誰付錢?</option>
+                     <option v-for="u in users" :value="u.name">{{u.name}}</option>
+                   </select>
+                 </div>
+               </div>
+               <div class="bg-gray-50 p-2 rounded-2xl border border-gray-100 flex items-center gap-2">
+                 <div class="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-gray-400 shadow-sm"><i class="fas fa-tag"></i></div>
+                 <input type="text" v-model="form.item" class="w-full bg-transparent text-gray-700 font-bold text-sm outline-none placeholder-gray-300" placeholder="買了什麼好東西？">
+               </div>
+               <div class="grid grid-cols-3 gap-3">
+                 <div class="col-span-2 bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                   <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Price ({{ isJPY ? '円' : 'NT$' }})</label>
+                   <input type="number" v-model.number="form.unitPrice" class="w-full bg-transparent text-gray-700 font-bold text-lg outline-none" placeholder="0">
+                 </div>
+                 <div class="bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                   <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Qty</label>
+                   <input type="number" v-model.number="form.quantity" class="w-full bg-transparent text-gray-700 font-bold text-lg outline-none text-center">
+                 </div>
+               </div>
+               <div class="bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                 <textarea v-model="form.note" rows="2" class="w-full bg-transparent text-gray-600 text-xs outline-none resize-none placeholder-gray-300" placeholder="備註 (例如：好吃到哭、記得還錢)"></textarea>
+               </div>
+               <div class="bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-2xl border border-pink-100 flex justify-between items-center shadow-inner">
+                 <div class="flex flex-col">
+                   <span class="text-xs text-pink-500 font-bold uppercase tracking-wider">Total (TWD)</span>
+                   <span v-if="isJPY" class="text-[10px] text-pink-400 font-mono">¥{{ (form.unitPrice * form.quantity).toLocaleString() }}</span>
+                 </div>
+                 <span class="font-bold text-pink-600 text-3xl font-mono tracking-tighter drop-shadow-sm">{{ displayTotalTWD.toLocaleString() }}</span>
+               </div>
+               <div>
+                 <div class="flex justify-between items-end mb-2 px-1">
+                    <label class="text-xs text-gray-400 font-bold uppercase">Split With</label>
+                    <button @click="toggleAll" class="text-xs text-pink-500 font-bold hover:text-pink-600">{{ isAllSelected ? 'Clear' : 'Select All' }}</button>
+                 </div>
+                 <div class="flex flex-wrap gap-2">
+                   <button v-for="u in users" :key="u.name" @click="toggleBen(u.name)"
+                     :class="form.beneficiaries.includes(u.name) ? 'bg-pink-500 text-white shadow-md transform scale-105' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'"
+                     class="px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 pop-btn">{{ u.name }}</button>
+                 </div>
+               </div>
+               <button @click="submit" class="pop-btn w-full bg-gray-800 text-white py-4 rounded-2xl font-bold shadow-xl shadow-gray-200 flex justify-center items-center gap-2 text-lg mt-2">
+                 <span>加入記帳</span> <i class="fas fa-check-circle text-pink-400"></i>
+               </button>
+             </div>
+          </div>
+
+          <!-- History -->
+          <div>
+            <div class="flex justify-between items-center mb-3 px-2">
+              <h3 class="font-bold text-gray-600 text-lg">History <span class="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full ml-1">{{ filteredExpenses.length }}</span></h3>
+              <div class="relative w-36 group">
+                <input type="text" v-model="filterText" placeholder="Search" class="w-full pl-8 pr-3 py-1.5 bg-white border-2 border-transparent group-hover:border-pink-100 focus:border-pink-300 rounded-full text-xs transition-all outline-none shadow-sm text-gray-600">
+                <i class="fas fa-search absolute left-3 top-2 text-gray-300 group-hover:text-pink-300 transition-colors text-xs"></i>
               </div>
             </div>
-
-            <button @click="openItinModal()" class="w-full py-3 border-2 border-dashed border-pink-200 text-pink-400 rounded-2xl font-bold text-sm hover:bg-pink-50 transition-colors flex items-center justify-center gap-2">
-              <i class="fas fa-plus-circle text-lg"></i> 新增此日行程
-            </button>
-            
-            <div class="relative space-y-6 pt-2 pb-10">
-              <div v-for="(item, idx) in dailyItinerary" :key="item.id" class="relative pl-14 group" :class="{'last-item': idx === dailyItinerary.length - 1}">
-                <div class="timeline-line group-hover:bg-pink-200 transition-colors"></div>
-                <div class="absolute left-0 top-1 text-xs font-bold text-slate-400 w-10 text-right font-mono">{{ formatTimeDisplay(item.startTime) }}</div>
-                <div class="absolute left-[22px] top-1.5 w-3.5 h-3.5 rounded-full border-[3px] border-white shadow-sm z-10 transition-transform group-hover:scale-110" :class="getTypeColor(item.type)"></div>
-
-                <div @click="openItinModal(item)" class="bg-white p-4 rounded-2xl card-shadow border border-white hover:border-pink-100 transition-all active:scale-[0.98] cursor-pointer">
-                  <div class="flex justify-between items-start">
-                    <div class="flex-1 min-w-0">
-                       <div class="flex items-center gap-2 mb-1.5">
-                          <span class="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider text-white shadow-sm" :class="getTypeColor(item.type)">
-                            <i :class="getTypeIcon(item.type)" class="mr-1"></i>{{ getTypeName(item.type) }}
-                          </span>
-                          <span v-if="item.endTime" class="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                             <i class="fas fa-clock mr-1"></i>~ {{ formatTimeDisplay(item.endTime) }}
-                          </span>
-                       </div>
-                       <h3 class="font-bold text-slate-800 text-lg leading-tight truncate">{{ item.location }}</h3>
-                       <div v-if="item.note" class="mt-2 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                         <p class="line-clamp-2">{{ item.note }}</p>
-                       </div>
-                       <div v-if="item.transport" class="mt-2 flex items-center gap-1.5 text-xs font-bold text-blue-400">
-                          <i class="fas fa-arrow-down"></i>
-                          <span class="bg-blue-50 px-2 py-0.5 rounded border border-blue-100"><i class="fas fa-bus mr-1"></i>{{ item.transport }}</span>
-                       </div>
-                    </div>
-                    <i class="fas fa-chevron-right text-gray-200 text-xs mt-2"></i>
+            <div v-if="filteredExpenses.length === 0" class="text-center py-12">
+               <div class="w-24 h-24 bg-gray-100 rounded-full mx-auto flex items-center justify-center text-gray-300 text-3xl mb-3"><i class="fas fa-ghost"></i></div>
+               <p class="text-gray-400 text-sm font-bold">空空如也</p>
+            </div>
+            <div class="space-y-3 pb-10">
+              <div v-for="exp in filteredExpenses" :key="exp.rowId" @click="openEditModal(exp)" class="glass-card p-4 rounded-2xl relative cursor-pointer active:scale-[0.98] transition-all duration-200 group hover:shadow-lg border-l-[6px] border-l-pink-400">
+                <div class="flex justify-between items-start mb-2">
+                  <div class="flex flex-col">
+                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{{ exp.date }}</span>
+                     <h4 class="font-bold text-gray-800 text-lg leading-tight group-hover:text-pink-500 transition-colors">{{ exp.item }}</h4>
+                  </div>
+                  <div class="text-right">
+                     <span class="block font-bold text-gray-800 text-lg font-mono">NT$ {{ Math.round(exp.amount).toLocaleString() }}</span>
+                     <span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{{ exp.payer }}</span>
                   </div>
                 </div>
+                <div class="flex justify-between items-center mt-3">
+                  <div class="flex -space-x-1 overflow-hidden">
+                     <div v-for="(ben, idx) in exp.beneficiaries.slice(0, 5)" :key="idx" class="w-5 h-5 rounded-full bg-blue-100 border border-white flex items-center justify-center text-[8px] text-blue-500 font-bold" :title="ben">{{ ben[0] }}</div>
+                     <div v-if="exp.beneficiaries.length > 5" class="w-5 h-5 rounded-full bg-gray-100 border border-white flex items-center justify-center text-[8px] text-gray-500 font-bold">+{{exp.beneficiaries.length-5}}</div>
+                  </div>
+                  <i class="fas fa-ellipsis-h text-gray-300 group-hover:text-pink-300"></i>
+                </div>
+                <div v-if="exp.note" class="mt-3 pt-2 border-t border-dashed border-gray-100 text-xs text-gray-500 flex gap-1.5">
+                  <i class="fas fa-comment-alt text-yellow-400 mt-0.5"></i>
+                  <span class="line-clamp-2">{{ exp.note }}</span>
+                </div>
               </div>
-              <div v-if="dailyItinerary.length === 0" class="text-center py-12 opacity-60"><div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-pink-50 text-3xl">🌸</div><p class="text-sm font-bold text-slate-400">這天還沒有安排行程喔</p></div>
             </div>
           </div>
-        </Transition>
+        </div>
 
-        <Transition name="slide-up">
-          <div v-if="currentView === 'map'" class="space-y-4">
-             <div class="bg-white p-1.5 rounded-[2rem] card-shadow relative overflow-hidden">
-               <div id="map"></div>
-               <button @click="locateMe" class="absolute bottom-5 right-5 z-[400] bg-white text-blue-500 w-12 h-12 rounded-full shadow-xl flex items-center justify-center text-xl hover:bg-blue-50 active:scale-95 transition-transform"><i class="fas fa-location-arrow"></i></button>
+        <!-- TAB 2: 結算 -->
+        <div v-if="currentTab === 'settlement'" class="space-y-5">
+           <div class="bg-gradient-to-br from-pink-500 to-rose-400 text-white p-6 rounded-[2rem] shadow-xl shadow-pink-200 relative overflow-hidden">
+             <i class="fas fa-plane-departure absolute -bottom-5 -right-5 text-9xl text-white opacity-10 transform -rotate-12"></i>
+             <div class="relative z-10 text-center">
+                <div class="text-pink-100 text-sm font-bold uppercase tracking-widest mb-1">Total Expenses</div>
+                <div class="text-5xl font-bold font-mono tracking-tighter drop-shadow-md">NT$ {{ Math.round(totalTrip).toLocaleString() }}</div>
              </div>
-             <div class="flex overflow-x-auto gap-3 pb-2 scrollbar-hide">
-               <div v-for="p in dailyMapPoints" :key="p.id" @click="flyTo(p.lat, p.lng)" class="min-w-[160px] bg-white p-3 rounded-2xl shadow-sm border border-white cursor-pointer hover:border-pink-300 flex-shrink-0 transition-all">
-                 <div class="flex justify-between items-start mb-1">
-                    <span class="text-[10px] font-bold text-blue-400 font-mono">{{ formatTimeDisplay(p.startTime) }}</span>
-                 </div>
-                 <div class="font-bold text-slate-700 text-sm truncate">{{ p.location }}</div>
+             <div class="grid grid-cols-2 gap-3 mt-6 relative z-10">
+               <div v-for="u in users" :key="u.name" class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+                 <div class="text-[10px] text-pink-100 uppercase font-bold">{{ u.name }} 應付</div>
+                 <div class="font-bold text-lg font-mono">{{ Math.round(shouldPayMap[u.name] || 0).toLocaleString() }}</div>
                </div>
-               <div v-if="dailyMapPoints.length === 0" class="w-full text-center text-xs text-gray-400 py-2">本日無定位點</div>
              </div>
-          </div>
-        </Transition>
+           </div>
+           <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+             <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><span class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-500"><i class="fas fa-exchange-alt"></i></span> 建議轉帳</h3>
+             <div v-if="settlements.length === 0" class="text-center py-8 bg-green-50 rounded-2xl border border-green-100">
+               <i class="fas fa-check-circle text-4xl text-green-400 mb-2"></i>
+               <p class="text-green-600 font-bold">完美！帳務已平衡</p>
+             </div>
+             <div v-else class="space-y-3">
+               <div v-for="s in settlements" class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                 <div class="flex items-center gap-3">
+                   <div class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center font-bold text-gray-600 border border-gray-100 text-xs">{{ s.from }}</div>
+                   <div class="flex flex-col items-center px-2"><span class="text-[10px] text-gray-400 font-bold">PAY</span><i class="fas fa-long-arrow-alt-right text-gray-300"></i></div>
+                   <div class="w-10 h-10 rounded-full bg-pink-500 shadow-md shadow-pink-200 flex items-center justify-center font-bold text-white text-xs">{{ s.to }}</div>
+                 </div>
+                 <div class="text-right"><div class="font-bold text-pink-500 font-mono text-lg">NT$ {{ s.amount.toLocaleString() }}</div></div>
+               </div>
+             </div>
+           </div>
+        </div>
 
-        <Transition name="slide-up"><div v-if="currentView === 'trans'" class="space-y-4 pt-5"><div class="grid grid-cols-1 gap-4"><a href="https://translate.google.com/?sl=zh-TW&tl=ja&op=translate" target="_blank" class="bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-6 rounded-[2rem] shadow-lg shadow-blue-200 active:scale-95 transition-transform"><div class="flex justify-between items-center mb-4"><div class="text-xs font-bold opacity-70 border border-white/30 px-3 py-1 rounded-full">我說中文</div><i class="fas fa-comment-dots text-2xl opacity-50"></i></div><div class="text-3xl font-black">CH <i class="fas fa-arrow-right mx-2 opacity-50 text-xl"></i> JP</div></a><a href="https://translate.google.com/?sl=ja&tl=zh-TW&op=translate" target="_blank" class="bg-white text-slate-700 border border-white p-6 rounded-[2rem] shadow-sm active:scale-95 transition-transform"><div class="flex justify-between items-center mb-4"><div class="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">對方說日文</div><i class="fas fa-assistive-listening-systems text-2xl text-slate-200"></i></div><div class="text-3xl font-black">JP <i class="fas fa-arrow-right mx-2 text-slate-300 text-xl"></i> CH</div></a></div></div></Transition>
-
-        <Transition name="slide-up">
-          <div v-if="currentView === 'money'" class="space-y-4">
-            <div class="flex bg-white p-1.5 rounded-2xl mb-4 shadow-sm border border-slate-100">
-              <button @click="moneyTab='list'" :class="moneyTab==='list'?'bg-slate-800 text-white shadow-md':'text-gray-400 hover:bg-gray-50'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">記帳列表</button>
-              <button @click="moneyTab='settle'" :class="moneyTab==='settle'?'bg-blue-500 text-white shadow-md':'text-gray-400 hover:bg-gray-50'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">結算</button>
-              <button @click="moneyTab='shop'" :class="moneyTab==='shop'?'bg-yellow-400 text-white shadow-md':'text-gray-400 hover:bg-gray-50'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">必買</button>
-              <button @click="moneyTab='personal'" :class="moneyTab==='personal'?'bg-pink-500 text-white shadow-md':'text-gray-400 hover:bg-gray-50'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">個人</button>
+        <!-- TAB 3: 個人 -->
+        <div v-if="currentTab === 'personal'" class="space-y-5">
+          <div class="glass-card rounded-[2.5rem] p-8 text-center relative mt-12 z-0">
+            <div class="absolute inset-0 rounded-[2.5rem] overflow-hidden -z-10 pointer-events-none">
+              <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-blue-100 to-transparent opacity-50"></div>
             </div>
             
-            <div v-if="moneyTab === 'list'" class="space-y-4">
-              <div class="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-white">
-                 <h2 class="font-bold text-gray-700 flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-500"><i class="fas fa-plus"></i></div> 新增花費</h2>
-                 <div class="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
-                   <div class="relative inline-block w-10 mr-1 align-middle select-none"><input type="checkbox" id="currency-toggle" v-model="isJPY" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all" :class="isJPY ? 'right-0 border-pink-400' : 'left-0 border-gray-300'"/><label for="currency-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-200 cursor-pointer" :class="isJPY ? 'bg-pink-400' : 'bg-gray-200'"></label></div>
-                   <span class="text-xs font-bold w-8 text-center" :class="isJPY ? 'text-pink-500' : 'text-gray-400'">{{ isJPY ? 'JPY' : 'TWD' }}</span>
-                 </div>
+            <div class="relative -mt-20 mb-4 z-10">
+              <div class="w-28 h-28 mx-auto rounded-full bg-white p-1.5 shadow-xl relative group">
+                <div class="w-full h-full rounded-full overflow-hidden bg-gray-100 relative">
+                  <!-- 關鍵修正：加入 referrerpolicy="no-referrer" 解決 Postimages 顯示問題 -->
+                  <img v-if="myInfo && myInfo.photo && !imgError" :key="myIdentity" :src="myInfo.photo" referrerpolicy="no-referrer" @error="handleImgError" class="w-full h-full object-cover">
+                  <div v-else class="w-full h-full flex items-center justify-center text-gray-300 text-4xl"><i class="fas fa-user"></i></div>
+                  <div @click="changePhoto" class="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity backdrop-blur-[2px]">
+                    <i class="fas fa-camera"></i>
+                  </div>
+                </div>
+                <div class="absolute bottom-1 right-1 w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center text-white border-4 border-white shadow-sm text-xs"><i class="fas fa-heart"></i></div>
               </div>
-              <div v-if="isJPY" class="bg-yellow-50/80 p-2.5 rounded-xl flex justify-between items-center text-xs text-yellow-700 border border-yellow-100 shadow-sm mb-2">
-                 <span class="font-bold"><i class="fas fa-coins mr-1"></i>匯率: 1 JPY ≈ </span>
-                 <div class="flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-yellow-200">
-                   <input type="number" v-model.number="exchangeRate" class="w-16 font-bold text-lg text-center outline-none bg-transparent" step="0.001">
-                   <span class="font-bold text-gray-400">TWD</span>
-                 </div>
-              </div>
-              <div class="bg-white border border-pink-100 p-5 rounded-3xl shadow-sm relative overflow-hidden"><div class="absolute top-0 left-0 w-full h-1 bg-pink-400"></div><div class="space-y-3"><div class="grid grid-cols-3 gap-2"><div class="col-span-2"><label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Item</label><input type="text" v-model="expenseForm.item" placeholder="品項" class="w-full bg-slate-50 px-3 py-3 rounded-xl text-sm font-bold outline-none focus:bg-pink-50"></div><div><label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Date</label><input type="date" v-model="expenseForm.date" class="w-full bg-slate-50 px-2 py-3 rounded-xl text-sm font-bold outline-none focus:bg-pink-50 text-center"></div></div><div class="grid grid-cols-3 gap-2"><div class="col-span-2"><label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Price</label><input type="number" v-model="expenseForm.unitPrice" placeholder="單價" class="w-full bg-slate-50 px-3 py-3 rounded-xl text-sm font-bold outline-none focus:bg-pink-50"></div><div><label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Qty</label><input type="number" v-model="expenseForm.quantity" class="w-full bg-slate-50 px-3 py-3 rounded-xl text-sm font-bold outline-none focus:bg-pink-50 text-center"></div></div><div class="p-4 rounded-2xl border shadow-inner flex justify-between items-center" :class="isJPY ? 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-100' : 'bg-gradient-to-r from-pink-50 to-pink-100 border-pink-100'"><div class="flex flex-col"><span class="text-xs font-bold uppercase tracking-wider" :class="isJPY ? 'text-blue-500' : 'text-pink-500'">Total (TWD)</span><span v-if="isJPY" class="text-[10px] font-mono mt-0.5" :class="isJPY ? 'text-blue-400' : 'text-pink-400'">¥{{ ((expenseForm.unitPrice||0)*(expenseForm.quantity||1)).toLocaleString() }}</span></div><span class="font-bold text-3xl font-mono tracking-tighter drop-shadow-sm" :class="isJPY ? 'text-blue-600' : 'text-pink-600'">{{ displayTotalTWD.toLocaleString() }}</span></div><div><label class="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-1 block">Payer</label><div class="flex gap-2 items-center bg-slate-50 p-2 rounded-xl"><select v-model="expenseForm.payer" class="bg-transparent px-2 py-1 text-xs font-bold outline-none flex-1 text-slate-600"><option value="" disabled>誰先付?</option><option v-for="u in users" :value="u.name">{{u.name}}</option></select><div class="w-[1px] h-6 bg-slate-200"></div><button @click="toggleAllBen" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white shadow-sm text-slate-500 active:scale-95 transition-transform">{{ isAllBen ? '清空' : '全選' }}</button></div></div><div class="flex flex-wrap gap-2"><button v-for="u in users" @click="toggleBen(u.name)" :class="expenseForm.beneficiaries.includes(u.name) ? 'bg-pink-500 text-white shadow-md' : 'bg-white text-gray-400 border border-gray-100'" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95">{{ u.name }}</button></div><button @click="submitExpense" class="w-full bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-lg active:scale-95 transition-transform mt-2">新增記帳</button></div></div><div class="space-y-3 pb-20"><div v-for="exp in sortedExpenses" :key="exp.rowId" @click="openEditModal(exp)" class="bg-white p-4 rounded-2xl shadow-sm border border-white hover:border-pink-100 active:scale-[0.98] transition-all relative cursor-pointer"><div class="flex justify-between items-start mb-2"><div class="flex flex-col"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{{ formatDateShort(exp.date) }}</span><h4 class="font-bold text-slate-800 text-lg leading-tight">{{ exp.item }}</h4></div><div class="text-right"><span class="block font-bold text-pink-500 text-lg font-mono">NT$ {{ exp.amount.toLocaleString() }}</span><span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold">{{ exp.payer }} 先付</span></div></div></div></div></div>
+            </div>
             
-            <div v-if="moneyTab === 'settle'" class="space-y-4">
-               <div class="bg-gradient-to-br from-slate-700 to-slate-800 text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden"><div class="relative z-10 text-center"><div class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1">Total Trip Cost</div><div class="text-4xl font-mono font-bold">NT$ {{ Math.round(totalTrip).toLocaleString() }}</div></div></div><div class="bg-white rounded-[2rem] p-6 shadow-sm border border-white"><div v-for="s in settlements" class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-2"><div class="flex items-center gap-3 text-sm font-bold text-slate-600"><span class="bg-white px-3 py-1 rounded-full shadow-sm text-xs">{{ s.from }}</span><i class="fas fa-long-arrow-alt-right text-gray-300"></i><span class="bg-slate-800 text-white px-3 py-1 rounded-full shadow-sm text-xs">{{ s.to }}</span></div><div class="font-mono font-bold text-pink-500 text-lg">NT$ {{ s.amount }}</div></div></div>
+            <div class="mb-6 relative z-10">
+              <select v-model="myIdentity" @change="saveIdentity" class="text-2xl font-bold text-center text-gray-800 bg-transparent border-none outline-none cursor-pointer hover:text-pink-500 transition-colors appearance-none pr-4">
+                <option disabled value="">我是誰?</option>
+                <option v-for="u in users" :value="u.name">{{ u.name }}</option>
+              </select>
+              <i class="fas fa-chevron-down text-xs text-gray-400 absolute top-1/2 -translate-y-1/2 ml-1 pointer-events-none"></i>
             </div>
 
-            <div v-if="moneyTab === 'shop'" class="space-y-4">
-               <div class="bg-white p-3 rounded-2xl shadow-sm border border-white"><div class="flex overflow-x-auto gap-2 pb-1 scrollbar-hide justify-center"><button v-for="u in users" :key="u.name" @click="shopUser=u.name" :class="shopUser===u.name ? 'bg-yellow-400 text-white shadow-md' : 'bg-slate-50 text-gray-400'" class="px-5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all">{{ u.name }}</button></div></div><div class="flex gap-2"><input v-model="shopItemInput" @keyup.enter="addShopItem" type="text" :placeholder="shopUser + ' 想買什麼?'" class="flex-1 bg-white px-5 py-4 rounded-full shadow-sm text-sm outline-none border-2 border-transparent focus:border-yellow-200 font-bold"><button @click="addShopItem" class="w-14 h-14 rounded-full bg-slate-800 text-white shadow-lg flex items-center justify-center"><i class="fas fa-plus"></i></button></div><div class="space-y-2 pb-20"><div v-for="item in filteredShoppingList" :key="item.id" class="bg-white p-4 rounded-2xl shadow-sm flex items-center gap-4 border border-transparent" :class="{'opacity-60 bg-gray-50': item.done}"><div @click="toggleShopItem(item)" class="w-6 h-6 rounded-full border-2 cursor-pointer flex items-center justify-center transition-all flex-shrink-0" :class="item.done ? 'bg-yellow-400 border-yellow-400 text-white' : 'border-gray-200 bg-white'"><i v-if="item.done" class="fas fa-check text-xs"></i></div><div class="flex-1 font-bold text-slate-700 text-sm break-all" :class="{'line-through text-gray-400': item.done}">{{ item.item }}</div><button @click="deleteShopItem(item.id)" class="text-gray-300 hover:text-red-400"><i class="fas fa-times"></i></button></div></div>
+            <div v-if="myInfo" class="flex justify-center gap-3 mb-6">
+              <a v-if="myInfo.phone" :href="'tel:' + myInfo.phone" class="bg-green-50 text-green-600 px-4 py-2 rounded-full text-xs font-bold border border-green-100 hover:bg-green-100 transition flex items-center gap-2"><i class="fas fa-phone-alt"></i> {{ myInfo.phone }}</a>
+              <a v-if="myInfo.email" :href="'mailto:' + myInfo.email" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-xs font-bold border border-blue-100 hover:bg-blue-100 transition flex items-center gap-2"><i class="fas fa-envelope"></i> Email</a>
             </div>
 
-            <div v-if="moneyTab === 'personal'" class="space-y-5">
-              <div class="bg-white rounded-[2.5rem] p-8 text-center relative mt-12 card-shadow border border-white">
-                <div class="absolute inset-0 rounded-[2.5rem] overflow-hidden -z-10 pointer-events-none"><div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-pink-50 to-transparent opacity-60"></div></div>
-                <div class="relative -mt-20 mb-4 z-10"><div class="w-28 h-28 mx-auto rounded-full bg-white p-1.5 shadow-xl relative group"><div class="w-full h-full rounded-full overflow-hidden bg-gray-100 relative"><img v-if="myInfo && myInfo.photo" :src="myInfo.photo" class="w-full h-full object-cover" referrerpolicy="no-referrer"><div v-else class="w-full h-full flex items-center justify-center text-gray-300 text-4xl"><i class="fas fa-user"></i></div><div @click="changePhoto" class="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity backdrop-blur-[2px]"><i class="fas fa-camera"></i></div></div></div></div>
-                <div class="mb-6 relative z-10"><select v-model="shopUser" class="text-3xl font-black text-center text-slate-800 bg-transparent border-none outline-none cursor-pointer hover:text-pink-50 transition-colors appearance-none pr-6"><option v-for="u in users" :value="u.name">{{ u.name }}</option></select><i class="fas fa-chevron-down text-sm text-gray-300 absolute top-1/2 -translate-y-1/2 right-1/2 -mr-16 pointer-events-none"></i></div>
-                <div class="grid grid-cols-2 gap-4"><div class="bg-blue-50 p-5 rounded-[1.5rem] border border-blue-100 relative overflow-hidden"><div class="relative z-10"><div class="text-[10px] text-blue-400 font-bold uppercase mb-1 tracking-wider">Total Paid</div><div class="text-2xl font-black text-blue-600 font-mono">{{ Math.round(paidMap[shopUser] || 0).toLocaleString() }}</div><div class="text-[10px] text-blue-300 mt-1 font-bold">代墊金額</div></div></div><div class="bg-pink-50 p-5 rounded-[1.5rem] border border-pink-100 relative overflow-hidden"><div class="relative z-10"><div class="text-[10px] text-pink-400 font-bold uppercase mb-1 tracking-wider">Total Cost</div><div class="text-2xl font-black text-pink-600 font-mono">{{ Math.round(shouldPayMap[shopUser] || 0).toLocaleString() }}</div><div class="text-[10px] text-pink-300 mt-1 font-bold">實際花費</div></div></div></div>
-              </div>
+            <div v-if="myIdentity" class="grid grid-cols-2 gap-4">
+               <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                 <div class="text-[10px] text-blue-400 font-bold uppercase mb-1">Total Paid</div>
+                 <div class="text-2xl font-bold text-blue-600 font-mono">{{ Math.round(paidMap[myIdentity] || 0).toLocaleString() }}</div>
+                 <div class="text-[10px] text-blue-300">代墊金額</div>
+               </div>
+               <div class="bg-pink-50 p-4 rounded-2xl border border-pink-100">
+                 <div class="text-[10px] text-pink-400 font-bold uppercase mb-1">Total Cost</div>
+                 <div class="text-2xl font-bold text-pink-600 font-mono">{{ Math.round(shouldPayMap[myIdentity] || 0).toLocaleString() }}</div>
+                 <div class="text-[10px] text-pink-300">實際花費</div>
+               </div>
             </div>
           </div>
-        </Transition>
-      </div>
 
-      <div v-if="showItinModal" class="fixed inset-0 bg-slate-900/60 z-[100] flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm animate-[fade_0.2s]">
-        <div class="bg-white w-full sm:max-w-sm rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl relative overflow-hidden animate-[slideUp_0.3s]">
-          <h3 class="font-bold text-xl text-slate-800 mb-6 mt-4 flex items-center gap-2">
-            <span class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-500 text-sm"><i class="fas fa-map-pin"></i></span>
-            {{ itinForm.id ? '編輯行程' : '新增行程' }}
-          </h3>
-          <div class="space-y-5">
-             <div class="bg-slate-50 p-3 rounded-2xl space-y-2">
-               <div class="flex gap-2">
-                 <input type="date" v-model="itinForm.date" class="flex-1 bg-white p-3 rounded-xl text-sm outline-none font-bold text-center shadow-sm text-slate-600">
-               </div>
-               <div class="flex gap-2 items-center">
-                 <input type="time" v-model="itinForm.startTime" class="flex-1 bg-white p-3 rounded-xl text-sm outline-none font-bold text-center shadow-sm text-slate-600">
-                 <span class="text-gray-400 font-bold">~</span>
-                 <input type="time" v-model="itinForm.endTime" class="flex-1 bg-white p-3 rounded-xl text-sm outline-none font-bold text-center shadow-sm text-slate-600 placeholder-gray-300">
-               </div>
-             </div>
-             <div class="relative"><input type="text" v-model="itinForm.location" placeholder="地點名稱 (例: 環球影城)" class="w-full bg-slate-50 p-4 pl-11 rounded-2xl text-sm outline-none font-bold focus:bg-pink-50 focus:ring-2 focus:ring-pink-100 transition-all"><i class="fas fa-search absolute left-4 top-4 text-gray-400"></i></div>
-             <div><label class="text-[10px] font-bold text-gray-400 uppercase ml-2 mb-2 block">類型</label><div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"><button v-for="t in ['spot','food','transport', 'flight']" @click="itinForm.type=t" :class="itinForm.type===t ? getTypeColor(t)+' text-white shadow-md ring-2 ring-offset-1 ring-transparent' : 'bg-slate-50 text-gray-400 border border-slate-100'" class="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all capitalize whitespace-nowrap min-w-[70px]"><i :class="getTypeIcon(t)" class="mr-1"></i>{{ getTypeName(t) }}</button></div></div>
-             <div class="bg-slate-50 p-2 rounded-2xl flex items-center gap-2"><div class="bg-white p-2 rounded-xl text-xs font-bold text-gray-400 shadow-sm whitespace-nowrap">前往此處的交通</div><input type="text" v-model="itinForm.transport" placeholder="例: 地鐵御堂筋線 / 計程車" class="flex-1 bg-transparent text-sm font-bold outline-none text-slate-700"></div>
-             <textarea v-model="itinForm.note" placeholder="備註 (選填)..." rows="2" class="w-full bg-slate-50 p-4 rounded-2xl text-sm outline-none font-bold focus:bg-pink-50 transition-colors resize-none"></textarea>
-             <div class="flex gap-3 pt-4">
-               <button v-if="itinForm.id" @click="deleteItin(itinForm.id)" class="px-4 bg-red-50 text-red-400 rounded-xl font-bold hover:bg-red-100"><i class="fas fa-trash"></i></button>
-               <button @click="showItinModal=false" class="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-xl font-bold hover:bg-gray-200 transition-colors">取消</button>
-               <button @click="submitItin" class="flex-[2] py-3.5 bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-200 flex justify-center items-center gap-2 active:scale-95 transition-transform"><span v-if="!isSubmitting">{{ itinForm.id ? '儲存變更' : '確認新增' }}</span><i v-else class="fas fa-circle-notch fa-spin"></i></button>
-             </div>
+          <div v-if="myIdentity" class="bg-white rounded-[2rem] p-6 shadow-sm">
+            <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><i class="fas fa-receipt text-gray-300"></i> 我的消費紀錄</h3>
+            <div v-if="myExpenses.length === 0" class="text-center text-gray-300 py-6 text-sm">還沒有花費紀錄喔</div>
+            <div class="space-y-4">
+              <div v-for="exp in myExpenses" :key="exp.rowId" class="flex justify-between items-center group">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 text-xs font-bold group-hover:bg-pink-50 group-hover:text-pink-500 transition-colors">{{ exp.date.substring(5) }}</div>
+                  <div><div class="text-sm font-bold text-gray-800 line-clamp-1">{{ exp.item }}</div><div class="text-[10px] text-gray-400">{{ exp.payer }} 付款</div></div>
+                </div>
+                <div class="text-right">
+                  <div class="font-bold text-pink-500 font-mono">{{ Math.round(exp.amount / exp.beneficiaries.length).toLocaleString() }}</div>
+                  <div class="text-[10px] text-gray-300">總價 {{ Math.round(exp.amount).toLocaleString() }}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div v-if="showEditModal" class="fixed inset-0 bg-slate-900/60 z-[100] flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm animate-[fade_0.2s]">
-        <div class="bg-white w-full sm:max-w-sm rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl relative overflow-hidden animate-[slideUp_0.3s]">
+      <!-- Edit Modal -->
+      <div v-if="showEditModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+        <div class="bg-white w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-y-auto p-6 relative shadow-2xl animate-[slideUp_0.3s_ease-out]">
           <button @click="showEditModal = false" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200"><i class="fas fa-times"></i></button>
-          <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="text-pink-500"><i class="fas fa-edit"></i></span> 修改帳目</h2>
+          <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2"><span class="text-pink-500"><i class="fas fa-edit"></i></span> 修改帳目</h2>
           <div class="space-y-4">
              <div class="grid grid-cols-2 gap-3">
-               <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+               <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
                   <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Date</label>
                   <input type="date" v-model="editForm.date" class="w-full bg-transparent font-bold text-sm outline-none">
                </div>
-               <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+               <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
                   <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Total (NT$)</label>
-                  <input type="number" v-model="editForm.unitPrice" class="w-full bg-transparent font-bold text-sm outline-none text-pink-600">
+                  <input type="number" v-model="editForm.totalAmount" class="w-full bg-transparent font-bold text-sm outline-none text-pink-600">
                </div>
              </div>
-             <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+             <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
                 <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Item</label>
                 <input type="text" v-model="editForm.item" class="w-full bg-transparent font-bold text-sm outline-none">
              </div>
-             <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+             <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
                 <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Payer</label>
                 <select v-model="editForm.payer" class="w-full bg-transparent font-bold text-sm outline-none"><option v-for="u in users" :value="u.name">{{u.name}}</option></select>
              </div>
@@ -242,135 +343,209 @@
                <label class="text-xs text-gray-400 font-bold uppercase mb-2 block">Split With</label>
                <div class="flex flex-wrap gap-2">
                  <button v-for="u in users" :key="u.name" @click="toggleEditBen(u.name)"
-                   :class="editForm.beneficiaries.includes(u.name) ? 'bg-pink-500 text-white shadow-sm' : 'bg-white text-gray-500 border border-gray-200'"
-                   class="px-3 py-1 rounded-lg text-xs font-bold transition-colors">{{ u.name }}</button>
+                   :class="editForm.beneficiaries.includes(u.name) ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-500'"
+                   class="px-3 py-1 rounded-full text-xs font-bold transition-colors">{{ u.name }}</button>
                </div>
              </div>
-             <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+             <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
                <textarea v-model="editForm.note" rows="3" class="w-full bg-transparent text-xs text-gray-600 outline-none resize-none placeholder-gray-300" placeholder="備註"></textarea>
              </div>
              <div class="grid grid-cols-2 gap-3 pt-4">
-               <button @click="deleteExp(editForm.rowId)" class="bg-red-50 text-red-500 py-3 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors">刪除紀錄</button>
-               <button @click="saveEdit" class="bg-slate-800 text-white py-3 rounded-xl text-sm font-bold shadow-lg hover:bg-slate-900 transition-colors">儲存變更</button>
+               <button @click="deleteItem(editForm)" class="bg-red-50 text-red-500 py-3 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors">刪除紀錄</button>
+               <button @click="saveEdit" class="bg-gray-800 text-white py-3 rounded-xl text-sm font-bold shadow-lg hover:bg-gray-900 transition-colors">儲存變更</button>
              </div>
           </div>
         </div>
       </div>
-
     </div>
 
     <script>
-      // 請將此處的 API_URL 替換為您部署後端 GAS 的網址
+      const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
+      
+      // ==========================================
+      // 【設定】請將 Google Apps Script 網址貼在下方引號中
+      // ==========================================
       const API_URL = "https://script.google.com/macros/s/AKfycbzD0COm2xYm2aqt8-Xap6og3XWPOnPp3P4YsKYFbRofWAUUOFswPtRJUYCp7NLPLW_tAA/exec"; 
-      const { createApp, ref, reactive, computed, onMounted, nextTick, watch } = Vue;
+      // 例如: const API_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
 
       createApp({
         setup() {
-          const isLoading = ref(true);
-          const hasData = ref(false);
-          const isSubmitting = ref(false);
-          const currentView = ref('itinerary');
-          const moneyTab = ref('list');
+          const currentTab = ref('record');
+          const isLoading = ref(false);
+          const loadError = ref('');
+          const users = ref([]); 
+          const expenses = ref([]);
+          const filterText = ref('');
           const isJPY = ref(false);
           const exchangeRate = ref(0.22);
+          const myIdentity = ref(localStorage.getItem('myIdentity') || '');
+          const imgError = ref(false);
 
-          const users = ref([]);
-          const expenses = ref([]);
-          const itinerary = ref([]);
-          const shoppingList = ref([]);
-          
-          const selectedDay = ref('2025-12-17');
-          const showItinModal = ref(false);
-          const itinForm = reactive({ id: null, date: '2025-12-17', startTime:'09:00', endTime:'', location:'', type:'spot', transport:'', note:'' });
-          const weatherInfo = reactive({ temp: '--°', icon: 'fas fa-cloud' });
+          // ==========================================
+          // 修正的核心：runGAS 函式改為使用 fetch 呼叫 Web API
+          // ==========================================
+          const runGAS = async (funcName, args = []) => {
+            if (!API_URL) throw new Error("請先在程式碼中設定 API_URL (Google Apps Script 網址)");
 
-          const fixedTripDays = ref(['2025-12-17', '2025-12-18', '2025-12-19', '2025-12-20', '2025-12-21', '2025-12-22']);
-
-          const safeDateStr = (raw) => { if(!raw) return ''; let s=String(raw); if(s.includes('T')) s=s.split('T')[0]; return s.replace(/\//g,'-'); };
-          const formatFullDate = (d) => { const x=new Date(d); if(isNaN(x.getTime())) return d; return `${(x.getMonth()+1).toString().padStart(2,'0')}/${x.getDate().toString().padStart(2,'0')} (${['日','一','二','三','四','五','六'][x.getDay()]})`; };
-          const formatTimeDisplay = (t) => { if(!t) return ''; const s=String(t); if(s.includes('T')){ const d=new Date(s); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');} if(s.length>5) return s.substring(0,5); return s; };
-          const formatDateShort = (d) => { const x=new Date(d); return `${(x.getMonth()+1)}/${x.getDate()}`; };
-
-          const dailyItinerary = computed(() => (itinerary.value || []).filter(i => safeDateStr(i.date) === selectedDay.value).sort((a,b) => formatTimeDisplay(a.startTime).localeCompare(formatTimeDisplay(b.startTime))));
-          const dailyMapPoints = computed(() => dailyItinerary.value.filter(i => i.lat && i.lng));
-
-          const getTypeColor = (t) => t==='food'?'bg-orange-400':(t==='transport'?'bg-blue-400':(t==='flight'?'bg-indigo-500':'bg-pink-400'));
-          const getTypeIcon = (t) => t==='food'?'fas fa-utensils':(t==='transport'?'fas fa-train':(t==='flight'?'fas fa-plane':'fas fa-camera'));
-          const getTypeName = (t) => ({spot:'景點',food:'美食',transport:'交通',flight:'航班'})[t]||'其他';
-
-          const fetchWeather = async () => { try { const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.6937&longitude=135.5023&current_weather=true&timezone=Asia%2FTokyo'); const data = await res.json(); weatherInfo.temp = Math.round(data.current_weather.temperature) + '°C'; const code = data.current_weather.weathercode; if(code <= 3) weatherInfo.icon = 'fas fa-sun text-yellow-400'; else if(code <= 60) weatherInfo.icon = 'fas fa-cloud text-gray-400'; else weatherInfo.icon = 'fas fa-umbrella text-blue-400'; } catch(e) {} };
-
-          let mapInstance = null;
-          const initMap = () => { if(mapInstance) return; mapInstance = L.map('map', {zoomControl: false}).setView([34.702485, 135.495951], 13); L.control.zoom({ position: 'topleft' }).addTo(mapInstance); L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' }).addTo(mapInstance); updateMarkers(); };
-          const updateMarkers = () => { if(!mapInstance) return; mapInstance.eachLayer((layer) => { if(layer instanceof L.Marker) mapInstance.removeLayer(layer); }); dailyMapPoints.value.forEach(p => { const html = `<div class="bg-white w-8 h-8 rounded-full border-[3px] border-white shadow-lg flex items-center justify-center text-lg ${getTypeColor(p.type).replace('bg-','text-')}"><i class="fas fa-map-marker-alt"></i></div>`; L.marker([p.lat, p.lng], {icon: L.divIcon({html, className: ''})}).addTo(mapInstance).bindPopup(p.location); }); if(dailyMapPoints.value.length > 0) { const group = new L.featureGroup(dailyMapPoints.value.map(p => L.marker([p.lat, p.lng]))); mapInstance.fitBounds(group.getBounds().pad(0.1)); } };
-          const locateMe = () => { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(pos => { const { latitude, longitude } = pos.coords; if(mapInstance) { const meIcon = L.divIcon({html: '<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse ring-4 ring-blue-500/30"></div>', className: ''}); L.marker([latitude, longitude], {icon: meIcon}).addTo(mapInstance); mapInstance.flyTo([latitude, longitude], 15); } }); } };
-          const flyTo = (lat, lng) => { if(mapInstance) { mapInstance.flyTo([lat, lng], 16); mapInstance.eachLayer(layer => { if(layer instanceof L.Marker && layer.getLatLng().lat == lat) layer.openPopup(); }); } };
-
-          watch([selectedDay, currentView], () => { if(currentView.value==='map') nextTick(() => { initMap(); updateMarkers(); }); });
-
-          const expenseForm = reactive({ date: new Date().toISOString().split('T')[0], item:'', unitPrice:'', quantity:1, payer:'', beneficiaries: [], note:'' });
-          const showEditModal = ref(false);
-          const editForm = reactive({ rowId:0, date:'', payer:'', item:'', unitPrice:0, quantity:1, beneficiaries:[], note:'' });
-
-          const isAllBen = computed(() => expenseForm.beneficiaries.length === (users.value || []).length && (users.value || []).length > 0);
-          const toggleBen = (n) => { const i=expenseForm.beneficiaries.indexOf(n); i>-1?expenseForm.beneficiaries.splice(i,1):expenseForm.beneficiaries.push(n); };
-          const toggleAllBen = () => { expenseForm.beneficiaries = isAllBen.value ? [] : users.value.map(u => u.name); };
-          const displayTotalTWD = computed(() => isJPY.value ? Math.round((expenseForm.unitPrice||0)*(expenseForm.quantity||1)*exchangeRate.value) : (expenseForm.unitPrice||0)*(expenseForm.quantity||1));
-          
-          const shopUser = ref('');
-          const shopItemInput = ref('');
-          const filteredShoppingList = computed(() => { const list = shoppingList.value || []; if(!shopUser.value && (users.value || []).length > 0) shopUser.value = users.value[0].name; return list.filter(s => s.user === shopUser.value); });
-          
-          const paidMap = computed(() => { const m={}; (users.value||[]).forEach(u=>m[u.name]=0); (expenses.value||[]).forEach(e=>{ if(m[e.payer]!==undefined) m[e.payer]+=Number(e.amount); }); return m; });
-          const shouldPayMap = computed(() => { const m={}; (users.value||[]).forEach(u=>m[u.name]=0); (expenses.value||[]).forEach(e=>{ const l=e.beneficiaries.length; if(l>0) e.beneficiaries.forEach(b=>{ if(m[b]!==undefined) m[b]+=Number(e.amount)/l; }); }); return m; });
-          
-          const settlements = computed(() => { let paid={}, should={}; (users.value||[]).forEach(u => { paid[u.name]=0; should[u.name]=0; }); (expenses.value||[]).forEach(ex => { if(paid[ex.payer]!==undefined) paid[ex.payer] += Number(ex.amount); const len = ex.beneficiaries.length; if(len>0) { const split = Number(ex.amount)/len; ex.beneficiaries.forEach(b => { if(should[b]!==undefined) should[b]+=split; }); } }); let bals = (users.value||[]).map(u => ({name: u.name, amt: paid[u.name]-should[u.name]})).filter(x=>Math.abs(x.amt)>1); bals.sort((a,b)=>a.amt-b.amt); let res=[]; let i=0, j=bals.length-1; while(i<j) { let d=bals[i], c=bals[j], amt=Math.min(Math.abs(d.amt), c.amt); res.push({from:d.name, to:c.name, amount:Math.round(amt)}); d.amt+=amt; c.amt-=amt; if(Math.abs(d.amt)<1) i++; if(c.amt<1) j--; } return res; });
-          
-          // *** 修正點：加入這個計算總花費的函式 ***
-          const totalTrip = computed(() => (expenses.value || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0));
-          
-          const sortedExpenses = computed(() => (expenses.value || []).slice().reverse());
-          const myInfo = computed(() => (users.value || []).find(u => u.name === shopUser.value));
-
-          const callApi = async (op, args=[]) => { const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({op, args})}); return r.json(); };
-          
-          const loadData = async () => {
-              try {
-                const res = await callApi('getAllData');
-                if (res.status === 'error') throw new Error(res.message);
-                
-                users.value = res.users || []; 
-                expenses.value = res.expenses || []; 
-                itinerary.value = res.itinerary || []; 
-                shoppingList.value = res.shopping || [];
-                
-                if(exchangeRate.value===0.22) exchangeRate.value = res.rate || 0.22;
-                if(users.value && users.value.length > 0 && !expenseForm.payer) { expenseForm.payer = users.value[0].name; expenseForm.beneficiaries = users.value.map(u=>u.name); }
-                hasData.value = true;
-              } catch(e) {
-                console.error("Load Data Error:", e);
-                // 就算失敗也清空資料，避免介面壞掉
-                users.value = []; expenses.value = []; itinerary.value = []; shoppingList.value = [];
-                Swal.fire('連線錯誤', '無法取得資料，請確認後端部署與網址', 'error');
-              } finally { isLoading.value = false; }
+            // 讀取類的操作使用 GET
+            if (['getExchangeRate', 'getUserList', 'getExpensesData'].includes(funcName)) {
+                const response = await fetch(`${API_URL}?op=${funcName}`);
+                const result = await response.json();
+                if (result.status === 'error') throw new Error(result.message);
+                return result; // 直接回傳數據，不用再拆 data
+            } 
+            // 寫入類的操作使用 POST
+            else {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ op: funcName, args: args })
+                });
+                const result = await response.json();
+                return result; // 回傳 { success: true/false, message: ... }
+            }
           };
 
-          const openItinModal = (item) => { showItinModal.value = true; if(item) { Object.assign(itinForm, { ...item, date: safeDateStr(item.date), startTime: formatTimeDisplay(item.startTime), endTime: formatTimeDisplay(item.endTime) }); } else { Object.assign(itinForm, { id: null, date: selectedDay.value, startTime:'09:00', endTime:'', location:'', type:'spot', transport:'', note:'' }); } };
-          const submitItin = async () => { isSubmitting.value = true; const op = itinForm.id ? 'editItinerary' : 'addItinerary'; const res = await callApi(op, [itinForm]); if(res.success) { showItinModal.value = false; await loadData(); } isSubmitting.value = false; };
-          const deleteItin = async (id) => { if(confirm('刪除?')) { isSubmitting.value=true; await callApi('deleteItinerary', [id]); showItinModal.value=false; await loadData(); isSubmitting.value=false; }};
-          const submitExpense = async () => { if(!expenseForm.item || !expenseForm.unitPrice) return Swal.fire('Error', '請填寫完整', 'error'); const finalPrice = isJPY.value ? Math.round(displayTotalTWD.value/expenseForm.quantity) : expenseForm.unitPrice; const note = isJPY.value ? `${expenseForm.note} [¥${expenseForm.unitPrice*expenseForm.quantity}]` : expenseForm.note; await callApi('addExpense', [{...expenseForm, unitPrice: finalPrice, note}]); expenseForm.item=''; expenseForm.unitPrice=''; await loadData(); };
-          const openEditModal = (exp) => { Object.assign(editForm, { rowId: exp.rowId, date: exp.date, payer: exp.payer, item: exp.item, unitPrice: exp.amount, quantity: 1, beneficiaries: [...exp.beneficiaries], note: exp.note }); showEditModal.value = true; };
+          const myInfo = computed(() => {
+            if(!myIdentity.value) return null;
+            return users.value.find(u => u.name === myIdentity.value) || null;
+          });
+
+          watch(myIdentity, () => {
+            imgError.value = false;
+          });
+
+          const handleImgError = () => {
+            imgError.value = true;
+          };
+
+          const form = reactive({ date: new Date().toISOString().split('T')[0], payer: '', item: '', unitPrice: '', quantity: 1, beneficiaries: [], note: '' });
+          const showEditModal = ref(false);
+          const editForm = reactive({ rowId:0, date:'', payer:'', item:'', totalAmount:0, beneficiaries:[], note:'' });
+
+          const displayTotalTWD = computed(() => {
+            const rawTotal = (form.unitPrice || 0) * (form.quantity || 1);
+            return isJPY.value ? Math.round(rawTotal * exchangeRate.value) : Math.round(rawTotal);
+          });
+
+          const fetchRate = () => { runGAS('getExchangeRate').then(r => { exchangeRate.value = r; }); };
+
+          const loadData = async () => {
+            isLoading.value = true;
+            loadError.value = '';
+            try {
+              const [rate, u, e] = await Promise.all([runGAS('getExchangeRate'), runGAS('getUserList'), runGAS('getExpensesData')]);
+              exchangeRate.value = rate; users.value = u;
+              if(!form.payer && u.length>0) form.payer = u[0].name;
+              if(form.beneficiaries.length===0) form.beneficiaries = u.map(x => x.name);
+              // Safe filtering for expenses (removing empty rows)
+              expenses.value = e.filter(item => item.item && String(item.item).trim() !== "");
+              calculateSettlement();
+            } catch (err) { loadError.value = err.message; } finally { isLoading.value = false; }
+          };
+
+          const submit = () => {
+            if(!form.item || !form.unitPrice || !form.payer || form.beneficiaries.length === 0) { Swal.fire({icon: 'warning', title: '等等！', text: '資料不完整', confirmButtonColor: '#ec4899'}); return; }
+            isLoading.value = true;
+            let finalPrice = form.unitPrice; let finalNote = form.note;
+            if (isJPY.value) {
+              finalPrice = Math.round(displayTotalTWD.value / form.quantity);
+              finalNote = (finalNote ? finalNote + ' ' : '') + `[JP¥${(form.unitPrice * form.quantity).toLocaleString()} @ ${exchangeRate.value}]`;
+            }
+            const payload = { date: form.date, payer: form.payer, item: form.item, unitPrice: finalPrice, quantity: form.quantity, beneficiaries: [...form.beneficiaries], note: finalNote };
+            runGAS('addExpense', [payload]).then(res => {
+              if(res.success) { Swal.fire({icon:'success', title:'已記帳', timer:1000, showConfirmButton:false}); loadData(); form.item = ''; form.unitPrice = ''; form.quantity = 1; form.note = ''; }
+              else { isLoading.value = false; Swal.fire('錯誤', res.message, 'error'); }
+            }).catch(e => { isLoading.value = false; Swal.fire('錯誤', e.message, 'error'); });
+          };
+
+          const openEditModal = (exp) => {
+            Object.assign(editForm, { rowId: exp.rowId, date: exp.date, payer: exp.payer, item: exp.item, totalAmount: exp.amount, beneficiaries: [...exp.beneficiaries], note: exp.note });
+            showEditModal.value = true;
+          };
           const toggleEditBen = (u) => { const i = editForm.beneficiaries.indexOf(u); i===-1?editForm.beneficiaries.push(u):editForm.beneficiaries.splice(i,1); };
-          const saveEdit = async () => { isLoading.value = true; const res = await callApi('editExpense', [editForm]); isLoading.value = false; showEditModal.value = false; if(res.success) loadData(); else Swal.fire('失敗', res.message, 'error'); };
-          const deleteExp = async (id) => { if(confirm('刪除此筆記帳?')) { isLoading.value = true; await callApi('deleteExpense', [id]); await loadData(); showEditModal.value = false; isLoading.value = false; } };
-          const addShopItem = async () => { if(!shopItemInput.value) return; await callApi('addShoppingItem', [{user:shopUser.value, item:shopItemInput.value}]); shopItemInput.value=''; await loadData(); };
-          const toggleShopItem = async (item) => { item.done=!item.done; await callApi('toggleShoppingItem', [item.id, item.done]); };
-          const deleteShopItem = async (id) => { if(confirm('刪除?')) { await callApi('deleteShoppingItem', [id]); await loadData(); }};
-          const changePhoto = async () => { const {value:u} = await Swal.fire({title:'更換頭貼',input:'text',showCancelButton:true}); if(u) { await callApi('updateUserPhoto', [shopUser.value, u]); await loadData(); }};
+          const saveEdit = () => {
+            isLoading.value = true;
+            runGAS('editExpense', [{...editForm, unitPrice: editForm.totalAmount, quantity: 1}]).then(res => {
+              isLoading.value = false; showEditModal.value = false; if(res.success) loadData(); else Swal.fire('失敗', res.message, 'error');
+            });
+          };
+          const deleteItem = (item) => {
+            Swal.fire({title: '確定刪除?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: '刪除'}).then(res => {
+              if(res.isConfirmed) { isLoading.value = true; runGAS('deleteExpense', [item.rowId]).then(r => { if(r.success) { loadData(); showEditModal.value = false; }}); }
+            });
+          };
 
-          onMounted(() => { loadData(); fetchWeather(); });
+          const saveIdentity = () => { localStorage.setItem('myIdentity', myIdentity.value); calculateSettlement(); };
+          
+          const changePhoto = async () => {
+            const { value: url } = await Swal.fire({
+              title: '設定頭貼',
+              input: 'text',
+              inputLabel: '請貼上圖片網址', 
+              inputPlaceholder: 'https://...',
+              showCancelButton: true,
+              confirmButtonText: '儲存',
+            });
 
-          return { isLoading, hasData, isSubmitting, currentView, moneyTab, isJPY, exchangeRate, users, expenses, itinerary, shoppingList, selectedDay, fixedTripDays, dailyItinerary, dailyMapPoints, showItinModal, itinForm, weatherInfo, getTypeColor, getTypeIcon, getTypeName, formatTimeDisplay, formatFullDate, formatDateShort, openItinModal, submitItin, deleteItin, locateMe, flyTo, expenseForm, isAllBen, toggleBen, toggleAllBen, displayTotalTWD, submitExpense, sortedExpenses, paidMap, shouldPayMap, settlements, totalTrip, myInfo, shopUser, shopItemInput, filteredShoppingList, addShopItem, toggleShopItem, deleteShopItem, changePhoto, showEditModal, editForm, openEditModal, toggleEditBen, saveEdit, deleteExp };
+            if (url) {
+              if (!myIdentity.value) { Swal.fire('請先選擇身分', '', 'warning'); return; }
+              isLoading.value = true;
+              runGAS('updateUserPhoto', [myIdentity.value, url]).then(res => {
+                if(res.success) {
+                  Swal.fire({icon:'success', title:'頭貼已更新', timer:1500, showConfirmButton:false});
+                  loadData(); // 重新讀取確保同步
+                } else {
+                  isLoading.value = false; Swal.fire('失敗', res.message, 'error');
+                }
+              });
+            }
+          };
+
+          // 結算邏輯
+          const totalTrip = ref(0); const paidMap = ref({}); const shouldPayMap = ref({}); const settlements = ref([]);
+          const calculateSettlement = () => {
+            let paid={}, should={}, total=0;
+            users.value.forEach(u => { paid[u.name]=0; should[u.name]=0; });
+            expenses.value.forEach(ex => {
+              total += ex.amount;
+              if(paid[ex.payer]!==undefined) paid[ex.payer] += ex.amount;
+              const len = ex.beneficiaries.length;
+              if(len>0) { const split = ex.amount/len; ex.beneficiaries.forEach(b => { if(should[b]!==undefined) should[b]+=split; }); }
+            });
+            totalTrip.value = total; paidMap.value = paid; shouldPayMap.value = should;
+            let bals = users.value.map(u => ({name: u.name, amt: paid[u.name]-should[u.name]})).filter(x=>Math.abs(x.amt)>1);
+            bals.sort((a,b)=>a.amt-b.amt);
+            let res=[]; let i=0, j=bals.length-1;
+            while(i<j) {
+              let d=bals[i], c=bals[j], amt=Math.min(Math.abs(d.amt), c.amt);
+              res.push({from:d.name, to:c.name, amount:Math.round(amt)});
+              d.amt+=amt; c.amt-=amt; if(Math.abs(d.amt)<1) i++; if(c.amt<1) j--;
+            }
+            settlements.value = res;
+          };
+
+          const myExpenses = computed(() => !myIdentity.value ? [] : expenses.value.filter(e => e.beneficiaries.includes(myIdentity.value)));
+          const filteredExpenses = computed(() => {
+            let res = expenses.value;
+            if(filterText.value) { const t=filterText.value.toLowerCase(); res=res.filter(e=>e.item.toLowerCase().includes(t)||e.payer.includes(t)); }
+            return res.sort((a,b) => new Date(b.date)-new Date(a.date) || b.rowId-a.rowId);
+          });
+          
+          const toggleAll = () => form.beneficiaries = isAllSelected.value ? [] : users.value.map(u=>u.name);
+          const toggleBen = (u) => { const i=form.beneficiaries.indexOf(u); i===-1?form.beneficiaries.push(u):form.beneficiaries.splice(i,1); };
+          const isAllSelected = computed(() => users.value.length>0 && form.beneficiaries.length===users.value.length);
+
+          onMounted(loadData);
+
+          return {
+            currentTab, isLoading, loadError, users, form, isJPY, exchangeRate, displayTotalTWD,
+            fetchRate, submit, filteredExpenses, filterText,
+            openEditModal, showEditModal, editForm, toggleEditBen, saveEdit, deleteItem,
+            totalTrip, paidMap, shouldPayMap, settlements, calculateSettlement,
+            myIdentity, saveIdentity, changePhoto, myExpenses, myInfo,
+            toggleAll, toggleBen, isAllSelected, imgError, handleImgError
+          };
         }
       }).mount('#app');
     </script>
