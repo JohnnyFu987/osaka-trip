@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>大阪畢業旅行小幫手</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#ec4899">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -48,7 +47,6 @@
           </div>
         </div>
         
-        <!-- 行程日期 Tab -->
         <div v-if="currentView === 'itinerary' || currentView === 'map'" class="flex justify-between gap-2 overflow-x-auto pb-2 scrollbar-hide pt-1">
           <button v-for="(d, idx) in fixedTripDays" :key="d" @click="selectedDay = d"
             :class="selectedDay === d ? 'bg-slate-800 text-white shadow-lg shadow-slate-300/50 scale-105' : 'bg-white text-slate-400 border border-slate-100'"
@@ -65,7 +63,6 @@
           <p class="text-sm font-bold text-slate-400 tracking-widest">載入旅程中...</p>
         </div>
 
-        <!-- 1. 行程表 View -->
         <Transition name="slide-up" mode="out-in">
           <div v-if="currentView === 'itinerary'" class="space-y-5">
             <div class="bg-white p-5 rounded-[1.5rem] card-shadow border border-white flex justify-between items-center relative overflow-hidden">
@@ -93,7 +90,6 @@
                 <div class="absolute left-0 top-1 text-xs font-bold text-slate-400 w-10 text-right font-mono">{{ formatTimeDisplay(item.startTime) }}</div>
                 <div class="absolute left-[22px] top-1.5 w-3.5 h-3.5 rounded-full border-[3px] border-white shadow-sm z-10 transition-transform group-hover:scale-110" :class="getTypeColor(item.type)"></div>
 
-                <!-- 內容卡片 (點擊編輯) -->
                 <div @click="openItinModal(item)" class="bg-white p-4 rounded-2xl card-shadow border border-white hover:border-pink-100 transition-all active:scale-[0.98] cursor-pointer">
                   <div class="flex justify-between items-start">
                     <div class="flex-1 min-w-0">
@@ -109,7 +105,6 @@
                        <div v-if="item.note" class="mt-2 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                          <p class="line-clamp-2">{{ item.note }}</p>
                        </div>
-                       <!-- 交通方式顯示 -->
                        <div v-if="item.transport" class="mt-2 flex items-center gap-1.5 text-xs font-bold text-blue-400">
                           <i class="fas fa-arrow-down"></i>
                           <span class="bg-blue-50 px-2 py-0.5 rounded border border-blue-100"><i class="fas fa-bus mr-1"></i>{{ item.transport }}</span>
@@ -124,7 +119,6 @@
           </div>
         </Transition>
 
-        <!-- 2. 地圖 View -->
         <Transition name="slide-up">
           <div v-if="currentView === 'map'" class="space-y-4">
              <div class="bg-white p-1.5 rounded-[2rem] card-shadow relative overflow-hidden">
@@ -143,10 +137,8 @@
           </div>
         </Transition>
 
-        <!-- 3. 翻譯 -->
         <Transition name="slide-up"><div v-if="currentView === 'trans'" class="space-y-4 pt-5"><div class="grid grid-cols-1 gap-4"><a href="https://translate.google.com/?sl=zh-TW&tl=ja&op=translate" target="_blank" class="bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-6 rounded-[2rem] shadow-lg shadow-blue-200 active:scale-95 transition-transform"><div class="flex justify-between items-center mb-4"><div class="text-xs font-bold opacity-70 border border-white/30 px-3 py-1 rounded-full">我說中文</div><i class="fas fa-comment-dots text-2xl opacity-50"></i></div><div class="text-3xl font-black">CH <i class="fas fa-arrow-right mx-2 opacity-50 text-xl"></i> JP</div></a><a href="https://translate.google.com/?sl=ja&tl=zh-TW&op=translate" target="_blank" class="bg-white text-slate-700 border border-white p-6 rounded-[2rem] shadow-sm active:scale-95 transition-transform"><div class="flex justify-between items-center mb-4"><div class="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">對方說日文</div><i class="fas fa-assistive-listening-systems text-2xl text-slate-200"></i></div><div class="text-3xl font-black">JP <i class="fas fa-arrow-right mx-2 text-slate-300 text-xl"></i> CH</div></a></div></div></Transition>
 
-        <!-- 4. 記帳 -->
         <Transition name="slide-up">
           <div v-if="currentView === 'money'" class="space-y-4">
             <div class="flex bg-white p-1.5 rounded-2xl mb-4 shadow-sm border border-slate-100">
@@ -193,7 +185,6 @@
         </Transition>
       </div>
 
-      <!-- 新增/編輯行程 Modal -->
       <div v-if="showItinModal" class="fixed inset-0 bg-slate-900/60 z-[100] flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm animate-[fade_0.2s]">
         <div class="bg-white w-full sm:max-w-sm rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl relative overflow-hidden animate-[slideUp_0.3s]">
           <h3 class="font-bold text-xl text-slate-800 mb-6 mt-4 flex items-center gap-2">
@@ -224,7 +215,6 @@
         </div>
       </div>
 
-      <!-- 編輯記帳 Modal -->
       <div v-if="showEditModal" class="fixed inset-0 bg-slate-900/60 z-[100] flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm animate-[fade_0.2s]">
         <div class="bg-white w-full sm:max-w-sm rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl relative overflow-hidden animate-[slideUp_0.3s]">
           <button @click="showEditModal = false" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200"><i class="fas fa-times"></i></button>
@@ -295,10 +285,9 @@
 
           const fixedTripDays = ref(['2025-12-17', '2025-12-18', '2025-12-19', '2025-12-20', '2025-12-21', '2025-12-22']);
 
-          // --- Date Helpers ---
-          const safeDateStr = (raw) => { if(!raw) return ''; if(typeof raw==='string' && raw.includes('T')) return raw.split('T')[0]; return raw; };
-          const formatFullDate = (d) => { const x=new Date(d); return `${(x.getMonth()+1).toString().padStart(2,'0')}/${x.getDate().toString().padStart(2,'0')} (${['日','一','二','三','四','五','六'][x.getDay()]})`; };
-          const formatTimeDisplay = (t) => { if(!t) return ''; if(t.toString().includes('T')){ const d=new Date(t); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');} if(t.toString().length>5) return t.toString().substring(0,5); return t; };
+          const safeDateStr = (raw) => { if(!raw) return ''; let s=String(raw); if(s.includes('T')) s=s.split('T')[0]; return s.replace(/\//g,'-'); };
+          const formatFullDate = (d) => { const x=new Date(d); if(isNaN(x.getTime())) return d; return `${(x.getMonth()+1).toString().padStart(2,'0')}/${x.getDate().toString().padStart(2,'0')} (${['日','一','二','三','四','五','六'][x.getDay()]})`; };
+          const formatTimeDisplay = (t) => { if(!t) return ''; const s=String(t); if(s.includes('T')){ const d=new Date(s); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');} if(s.length>5) return s.substring(0,5); return s; };
 
           const dailyItinerary = computed(() => (itinerary.value || []).filter(i => safeDateStr(i.date) === selectedDay.value).sort((a,b) => formatTimeDisplay(a.startTime).localeCompare(formatTimeDisplay(b.startTime))));
           const dailyMapPoints = computed(() => dailyItinerary.value.filter(i => i.lat && i.lng));
@@ -307,65 +296,16 @@
           const getTypeIcon = (t) => t==='food'?'fas fa-utensils':(t==='transport'?'fas fa-train':(t==='flight'?'fas fa-plane':'fas fa-camera'));
           const getTypeName = (t) => ({spot:'景點',food:'美食',transport:'交通',flight:'航班'})[t]||'其他';
 
-          // --- Weather ---
-          const fetchWeather = async () => {
-             try {
-                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.6937&longitude=135.5023&current_weather=true&timezone=Asia%2FTokyo');
-                const data = await res.json();
-                weatherInfo.temp = Math.round(data.current_weather.temperature) + '°C';
-                const code = data.current_weather.weathercode;
-                if(code <= 3) weatherInfo.icon = 'fas fa-sun text-yellow-400';
-                else if(code <= 60) weatherInfo.icon = 'fas fa-cloud text-gray-400';
-                else weatherInfo.icon = 'fas fa-umbrella text-blue-400';
-             } catch(e) {}
-          };
+          const fetchWeather = async () => { try { const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.6937&longitude=135.5023&current_weather=true&timezone=Asia%2FTokyo'); const data = await res.json(); weatherInfo.temp = Math.round(data.current_weather.temperature) + '°C'; const code = data.current_weather.weathercode; if(code <= 3) weatherInfo.icon = 'fas fa-sun text-yellow-400'; else if(code <= 60) weatherInfo.icon = 'fas fa-cloud text-gray-400'; else weatherInfo.icon = 'fas fa-umbrella text-blue-400'; } catch(e) {} };
 
-          // --- Map ---
           let mapInstance = null;
-          const initMap = () => {
-             if(mapInstance) return;
-             mapInstance = L.map('map', {zoomControl: false}).setView([34.702485, 135.495951], 13);
-             L.control.zoom({ position: 'topleft' }).addTo(mapInstance);
-             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' }).addTo(mapInstance);
-             updateMarkers();
-          };
-          const updateMarkers = () => {
-             if(!mapInstance) return;
-             mapInstance.eachLayer((layer) => { if(layer instanceof L.Marker) mapInstance.removeLayer(layer); });
-             dailyMapPoints.value.forEach(p => {
-               const html = `<div class="bg-white w-8 h-8 rounded-full border-[3px] border-white shadow-lg flex items-center justify-center text-lg ${getTypeColor(p.type).replace('bg-','text-')}"><i class="fas fa-map-marker-alt"></i></div>`;
-               L.marker([p.lat, p.lng], {icon: L.divIcon({html, className: ''})}).addTo(mapInstance).bindPopup(p.location);
-             });
-             if(dailyMapPoints.value.length > 0) {
-                const group = new L.featureGroup(dailyMapPoints.value.map(p => L.marker([p.lat, p.lng])));
-                mapInstance.fitBounds(group.getBounds().pad(0.1));
-             }
-          };
-          
-          // --- Missing Functions Inserted Below ---
-          const locateMe = () => {
-             if (navigator.geolocation) {
-               navigator.geolocation.getCurrentPosition(pos => {
-                  const { latitude, longitude } = pos.coords;
-                  if(mapInstance) {
-                    const meIcon = L.divIcon({html: '<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse ring-4 ring-blue-500/30"></div>', className: ''});
-                    L.marker([latitude, longitude], {icon: meIcon}).addTo(mapInstance);
-                    mapInstance.flyTo([latitude, longitude], 15);
-                  }
-               });
-             }
-          };
-          const flyTo = (lat, lng) => {
-             if(mapInstance) {
-                mapInstance.flyTo([lat, lng], 16);
-                mapInstance.eachLayer(layer => { if(layer instanceof L.Marker && layer.getLatLng().lat == lat) layer.openPopup(); });
-             }
-          };
-          // ----------------------------------------
+          const initMap = () => { if(mapInstance) return; mapInstance = L.map('map', {zoomControl: false}).setView([34.702485, 135.495951], 13); L.control.zoom({ position: 'topleft' }).addTo(mapInstance); L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' }).addTo(mapInstance); updateMarkers(); };
+          const updateMarkers = () => { if(!mapInstance) return; mapInstance.eachLayer((layer) => { if(layer instanceof L.Marker) mapInstance.removeLayer(layer); }); dailyMapPoints.value.forEach(p => { const html = `<div class="bg-white w-8 h-8 rounded-full border-[3px] border-white shadow-lg flex items-center justify-center text-lg ${getTypeColor(p.type).replace('bg-','text-')}"><i class="fas fa-map-marker-alt"></i></div>`; L.marker([p.lat, p.lng], {icon: L.divIcon({html, className: ''})}).addTo(mapInstance).bindPopup(p.location); }); if(dailyMapPoints.value.length > 0) { const group = new L.featureGroup(dailyMapPoints.value.map(p => L.marker([p.lat, p.lng]))); mapInstance.fitBounds(group.getBounds().pad(0.1)); } };
+          const locateMe = () => { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(pos => { const { latitude, longitude } = pos.coords; if(mapInstance) { const meIcon = L.divIcon({html: '<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse ring-4 ring-blue-500/30"></div>', className: ''}); L.marker([latitude, longitude], {icon: meIcon}).addTo(mapInstance); mapInstance.flyTo([latitude, longitude], 15); } }); } };
+          const flyTo = (lat, lng) => { if(mapInstance) { mapInstance.flyTo([lat, lng], 16); mapInstance.eachLayer(layer => { if(layer instanceof L.Marker && layer.getLatLng().lat == lat) layer.openPopup(); }); } };
 
           watch([selectedDay, currentView], () => { if(currentView.value==='map') nextTick(() => { initMap(); updateMarkers(); }); });
 
-          // --- CRUD & Money ---
           const expenseForm = reactive({ date: new Date().toISOString().split('T')[0], item:'', unitPrice:'', quantity:1, payer:'', beneficiaries: [], note:'' });
           const showEditModal = ref(false);
           const editForm = reactive({ rowId:0, date:'', payer:'', item:'', unitPrice:0, quantity:1, beneficiaries:[], note:'' });
@@ -377,89 +317,39 @@
           
           const shopUser = ref('');
           const shopItemInput = ref('');
-          const filteredShoppingList = computed(() => { 
-              const list = shoppingList.value || [];
-              if(!shopUser.value && (users.value || []).length > 0) shopUser.value = users.value[0].name; 
-              return list.filter(s => s.user === shopUser.value); 
-          });
+          const filteredShoppingList = computed(() => { const list = shoppingList.value || []; if(!shopUser.value && (users.value || []).length > 0) shopUser.value = users.value[0].name; return list.filter(s => s.user === shopUser.value); });
           
           const paidMap = computed(() => { const m={}; (users.value||[]).forEach(u=>m[u.name]=0); (expenses.value||[]).forEach(e=>{ if(m[e.payer]!==undefined) m[e.payer]+=e.amount; }); return m; });
           const shouldPayMap = computed(() => { const m={}; (users.value||[]).forEach(u=>m[u.name]=0); (expenses.value||[]).forEach(e=>{ const l=e.beneficiaries.length; if(l>0) e.beneficiaries.forEach(b=>{ if(m[b]!==undefined) m[b]+=e.amount/l; }); }); return m; });
-          const settlements = computed(() => { 
-             let paid={}, should={}; (users.value||[]).forEach(u => { paid[u.name]=0; should[u.name]=0; });
-             (expenses.value||[]).forEach(ex => { if(paid[ex.payer]!==undefined) paid[ex.payer] += ex.amount; const len = ex.beneficiaries.length; if(len>0) { const split = ex.amount/len; ex.beneficiaries.forEach(b => { if(should[b]!==undefined) should[b]+=split; }); } });
-             let bals = (users.value||[]).map(u => ({name: u.name, amt: paid[u.name]-should[u.name]})).filter(x=>Math.abs(x.amt)>1); bals.sort((a,b)=>a.amt-b.amt);
-             let res=[]; let i=0, j=bals.length-1; while(i<j) { let d=bals[i], c=bals[j], amt=Math.min(Math.abs(d.amt), c.amt); res.push({from:d.name, to:c.name, amount:Math.round(amt)}); d.amt+=amt; c.amt-=amt; if(Math.abs(d.amt)<1) i++; if(c.amt<1) j--; } return res;
-          });
+          const settlements = computed(() => { let paid={}, should={}; (users.value||[]).forEach(u => { paid[u.name]=0; should[u.name]=0; }); (expenses.value||[]).forEach(ex => { if(paid[ex.payer]!==undefined) paid[ex.payer] += ex.amount; const len = ex.beneficiaries.length; if(len>0) { const split = ex.amount/len; ex.beneficiaries.forEach(b => { if(should[b]!==undefined) should[b]+=split; }); } }); let bals = (users.value||[]).map(u => ({name: u.name, amt: paid[u.name]-should[u.name]})).filter(x=>Math.abs(x.amt)>1); bals.sort((a,b)=>a.amt-b.amt); let res=[]; let i=0, j=bals.length-1; while(i<j) { let d=bals[i], c=bals[j], amt=Math.min(Math.abs(d.amt), c.amt); res.push({from:d.name, to:c.name, amount:Math.round(amt)}); d.amt+=amt; c.amt-=amt; if(Math.abs(d.amt)<1) i++; if(c.amt<1) j--; } return res; });
           const sortedExpenses = computed(() => (expenses.value || []).slice().reverse());
           const myInfo = computed(() => (users.value || []).find(u => u.name === shopUser.value));
 
-          // Actions
           const callApi = async (op, args=[]) => { const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({op, args})}); return r.json(); };
           
           const loadData = async () => {
              try {
                 const res = await callApi('getAllData');
                 if (res.status === 'error') throw new Error(res.message);
-                
-                users.value = res.users || [];
-                expenses.value = res.expenses || [];
-                itinerary.value = res.itinerary || [];
-                shoppingList.value = res.shopping || [];
-                
+                users.value = res.users || []; expenses.value = res.expenses || []; itinerary.value = res.itinerary || []; shoppingList.value = res.shopping || [];
                 if(exchangeRate.value===0.22) exchangeRate.value = res.rate || 0.22;
-                
-                if(users.value && users.value.length > 0 && !expenseForm.payer) { 
-                    expenseForm.payer = users.value[0].name; 
-                    expenseForm.beneficiaries = users.value.map(u=>u.name); 
-                }
+                if(users.value && users.value.length > 0 && !expenseForm.payer) { expenseForm.payer = users.value[0].name; expenseForm.beneficiaries = users.value.map(u=>u.name); }
                 hasData.value = true;
              } catch(e) {
                 console.error("Load Data Error:", e);
-                // Safe reset
                 users.value = []; expenses.value = []; itinerary.value = []; shoppingList.value = [];
-                Swal.fire('讀取失敗', '無法讀取資料，請檢查後端部署或執行 setup()', 'error');
-             } finally {
-                isLoading.value = false;
-             }
+                Swal.fire('部署檢查', '請確認後端已重新部署 (New Deployment) 並更新 API_URL', 'error');
+             } finally { isLoading.value = false; }
           };
 
-          // Itinerary Actions
-          const openItinModal = (item) => {
-             showItinModal.value = true;
-             if(item) { Object.assign(itinForm, { ...item, date: safeDateStr(item.date), startTime: formatTimeDisplay(item.startTime), endTime: formatTimeDisplay(item.endTime) }); }
-             else { Object.assign(itinForm, { id: null, date: selectedDay.value, startTime:'09:00', endTime:'', location:'', type:'spot', transport:'', note:'' }); }
-          };
-          const submitItin = async () => {
-             isSubmitting.value = true;
-             const op = itinForm.id ? 'editItinerary' : 'addItinerary';
-             const res = await callApi(op, [itinForm]);
-             if(res.success) { showItinModal.value = false; await loadData(); }
-             isSubmitting.value = false;
-          };
+          const openItinModal = (item) => { showItinModal.value = true; if(item) { Object.assign(itinForm, { ...item, date: safeDateStr(item.date), startTime: formatTimeDisplay(item.startTime), endTime: formatTimeDisplay(item.endTime) }); } else { Object.assign(itinForm, { id: null, date: selectedDay.value, startTime:'09:00', endTime:'', location:'', type:'spot', transport:'', note:'' }); } };
+          const submitItin = async () => { isSubmitting.value = true; const op = itinForm.id ? 'editItinerary' : 'addItinerary'; const res = await callApi(op, [itinForm]); if(res.success) { showItinModal.value = false; await loadData(); } isSubmitting.value = false; };
           const deleteItin = async (id) => { if(confirm('刪除?')) { isSubmitting.value=true; await callApi('deleteItinerary', [id]); showItinModal.value=false; await loadData(); isSubmitting.value=false; }};
-
-          // Expense Actions
-          const submitExpense = async () => {
-             if(!expenseForm.item || !expenseForm.unitPrice) return Swal.fire('Error', '請填寫完整', 'error');
-             const finalPrice = isJPY.value ? Math.round(displayTotalTWD.value/expenseForm.quantity) : expenseForm.unitPrice;
-             const note = isJPY.value ? `${expenseForm.note} [¥${expenseForm.unitPrice*expenseForm.quantity}]` : expenseForm.note;
-             await callApi('addExpense', [{...expenseForm, unitPrice: finalPrice, note}]);
-             expenseForm.item=''; expenseForm.unitPrice=''; await loadData();
-          };
-          
-          const openEditModal = (exp) => {
-            Object.assign(editForm, { rowId: exp.rowId, date: exp.date, payer: exp.payer, item: exp.item, unitPrice: exp.amount, quantity: 1, beneficiaries: [...exp.beneficiaries], note: exp.note });
-            showEditModal.value = true;
-          };
+          const submitExpense = async () => { if(!expenseForm.item || !expenseForm.unitPrice) return Swal.fire('Error', '請填寫完整', 'error'); const finalPrice = isJPY.value ? Math.round(displayTotalTWD.value/expenseForm.quantity) : expenseForm.unitPrice; const note = isJPY.value ? `${expenseForm.note} [¥${expenseForm.unitPrice*expenseForm.quantity}]` : expenseForm.note; await callApi('addExpense', [{...expenseForm, unitPrice: finalPrice, note}]); expenseForm.item=''; expenseForm.unitPrice=''; await loadData(); };
+          const openEditModal = (exp) => { Object.assign(editForm, { rowId: exp.rowId, date: exp.date, payer: exp.payer, item: exp.item, unitPrice: exp.amount, quantity: 1, beneficiaries: [...exp.beneficiaries], note: exp.note }); showEditModal.value = true; };
           const toggleEditBen = (u) => { const i = editForm.beneficiaries.indexOf(u); i===-1?editForm.beneficiaries.push(u):editForm.beneficiaries.splice(i,1); };
-          const saveEdit = async () => {
-            isLoading.value = true;
-            const res = await callApi('editExpense', [editForm]);
-            isLoading.value = false; showEditModal.value = false; if(res.success) loadData(); else Swal.fire('失敗', res.message, 'error');
-          };
+          const saveEdit = async () => { isLoading.value = true; const res = await callApi('editExpense', [editForm]); isLoading.value = false; showEditModal.value = false; if(res.success) loadData(); else Swal.fire('失敗', res.message, 'error'); };
           const deleteExp = async (id) => { if(confirm('刪除此筆記帳?')) { isLoading.value = true; await callApi('deleteExpense', [id]); await loadData(); showEditModal.value = false; isLoading.value = false; } };
-
           const addShopItem = async () => { if(!shopItemInput.value) return; await callApi('addShoppingItem', [{user:shopUser.value, item:shopItemInput.value}]); shopItemInput.value=''; await loadData(); };
           const toggleShopItem = async (item) => { item.done=!item.done; await callApi('toggleShoppingItem', [item.id, item.done]); };
           const deleteShopItem = async (id) => { if(confirm('刪除?')) { await callApi('deleteShoppingItem', [id]); await loadData(); }};
@@ -467,17 +357,7 @@
 
           onMounted(() => { loadData(); fetchWeather(); });
 
-          return { 
-            isLoading, hasData, isSubmitting, currentView, moneyTab, isJPY, exchangeRate, users, expenses, itinerary, shoppingList,
-            selectedDay, fixedTripDays, dailyItinerary, dailyMapPoints, showItinModal, itinForm, weatherInfo,
-            getTypeColor, getTypeIcon, getTypeName, formatTimeDisplay, formatFullDate,
-            openItinModal, submitItin, deleteItin,
-            locateMe, flyTo,
-            expenseForm, isAllBen, toggleBen, toggleAllBen, displayTotalTWD, submitExpense,
-            sortedExpenses, paidMap, shouldPayMap, settlements, myInfo, shopUser, shopItemInput, filteredShoppingList,
-            addShopItem, toggleShopItem, deleteShopItem, changePhoto,
-            showEditModal, editForm, openEditModal, toggleEditBen, saveEdit, deleteExp
-          };
+          return { isLoading, hasData, isSubmitting, currentView, moneyTab, isJPY, exchangeRate, users, expenses, itinerary, shoppingList, selectedDay, fixedTripDays, dailyItinerary, dailyMapPoints, showItinModal, itinForm, weatherInfo, getTypeColor, getTypeIcon, getTypeName, formatTimeDisplay, formatFullDate, openItinModal, submitItin, deleteItin, locateMe, flyTo, expenseForm, isAllBen, toggleBen, toggleAllBen, displayTotalTWD, submitExpense, sortedExpenses, paidMap, shouldPayMap, settlements, myInfo, shopUser, shopItemInput, filteredShoppingList, addShopItem, toggleShopItem, deleteShopItem, changePhoto, showEditModal, editForm, openEditModal, toggleEditBen, saveEdit, deleteExp };
         }
       }).mount('#app');
     </script>
