@@ -245,7 +245,7 @@
              <button v-for="d in tripDates" :key="d" @click="currentDate = d"
                :class="currentDate === d ? 'bg-sky-400 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'"
                class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors flex-shrink-0">
-               {{ d.substring(5) }}
+               {{ formatDate(d) }}
              </button>
            </div>
 
@@ -311,7 +311,10 @@
            <!-- Filter -->
            <div class="flex justify-end gap-2 px-1">
               <button @click="shopFilter='all'" :class="shopFilter==='all'?'bg-purple-500 text-white':'bg-white text-gray-500'" class="px-3 py-1 rounded-full text-xs font-bold transition-all border border-transparent">全部</button>
-              <button v-if="myIdentity" @click="shopFilter='mine'" :class="shopFilter==='mine'?'bg-purple-500 text-white':'bg-white text-gray-500'" class="px-3 py-1 rounded-full text-xs font-bold transition-all border border-transparent">我的</button>
+              <button @click="toggleMyFilter" :class="shopFilter==='mine'?'bg-purple-500 text-white':'bg-white text-gray-500'" class="px-3 py-1 rounded-full text-xs font-bold transition-all border border-transparent">
+                 <span v-if="myIdentity">我的 ({{myIdentity}})</span>
+                 <span v-else>我的 (未設定)</span>
+              </button>
            </div>
 
            <!-- List -->
@@ -532,7 +535,7 @@
           const users = ref([]); 
           const expenses = ref([]);
           const itineraryList = ref([]); 
-          const shoppingList = ref([]); // 新增：購物清單
+          const shoppingList = ref([]); 
           const shopForm = reactive({ user: '', item: '' });
           const shopFilter = ref('all');
           const filterText = ref('');
@@ -549,7 +552,7 @@
           let map = null;
           let markers = [];
 
-          // Mock Data (已修正：加入 Shopping 範例資料)
+          // Mock Data
           const getMockData = (funcName) => {
              if (funcName === 'getExchangeRate') return 0.215;
              if (funcName === 'getUserList') return [{name: 'User A'}, {name: 'User B'}];
@@ -608,6 +611,37 @@
               return shoppingList.value;
           });
 
+          // 修正後的 toggleMyFilter
+          const toggleMyFilter = () => {
+             if (shopFilter.value === 'mine') {
+                shopFilter.value = 'all';
+             } else {
+                if (!myIdentity.value) {
+                   Swal.fire({
+                      icon: 'info',
+                      title: '請先設定身分',
+                      text: '請到「個人」頁面選擇您是誰，才能篩選您的清單喔！',
+                      confirmButtonText: '去設定',
+                      confirmButtonColor: '#eab308' // yellow-500
+                   }).then((result) => {
+                      if(result.isConfirmed) {
+                         changeTab('personal');
+                      }
+                   });
+                   return;
+                }
+                shopFilter.value = 'mine';
+             }
+          };
+
+          const formatDate = (dateStr) => {
+             const d = new Date(dateStr);
+             const m = d.getMonth() + 1;
+             const date = d.getDate();
+             const day = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
+             return `${m}/${date} (${day})`;
+          };
+
           const initMap = () => {
              if (map) return;
              map = L.map('osm-map').setView([34.6937, 135.5022], 13);
@@ -651,8 +685,12 @@
              currentTab.value = tab;
              if (tab === 'schedule') {
                 nextTick(() => {
+                   // 關鍵修正：切換 Tab 時完全重置地圖，避免容器消失導致的錯誤
+                   if (map) {
+                      map.remove();
+                      map = null;
+                   }
                    initMap();
-                   map.invalidateSize(); 
                    updateMapMarkers();
                 });
              } else if (tab === 'settlement') {
@@ -696,7 +734,6 @@
           // CRUD Shopping List
           const submitShop = () => {
               if(!shopForm.item || !shopForm.user) {
-                  // 如果沒選人，且有登入身分，自動帶入
                   if(!shopForm.user && myIdentity.value) shopForm.user = myIdentity.value;
                   else { Swal.fire('提示', '請輸入物品和許願者', 'info'); return; }
               }
@@ -704,17 +741,16 @@
               runGAS('addShoppingItem', [shopForm]).then(res => {
                   isLoading.value = false;
                   if(res.success) {
-                      shopForm.item = ''; // clear input
+                      shopForm.item = ''; 
                       loadData();
                   }
               });
           };
 
           const toggleShop = (item) => {
-              // Optimistic UI update
               item.done = !item.done;
               runGAS('toggleShoppingItem', [item.id, item.done]).then(res => {
-                  if(!res.success) item.done = !item.done; // revert on fail
+                  if(!res.success) item.done = !item.done; 
               });
           };
 
@@ -752,7 +788,7 @@
                  const rawExp = data.expenses || [];
                  expenses.value = Array.isArray(rawExp) ? rawExp.filter(item => item.item && String(item.item).trim() !== "") : [];
                  itineraryList.value = data.itinerary || [];
-                 shoppingList.value = data.shopping || []; // Load Shopping Data
+                 shoppingList.value = data.shopping || []; 
                  
                  if(!form.payer && users.value.length>0) form.payer = users.value[0].name;
                  if(form.beneficiaries.length===0) form.beneficiaries = users.value.map(x => x.name);
@@ -850,7 +886,7 @@
             toggleAll, toggleBen, isAllSelected, imgError, handleImgError,
             tripDates, currentDate, itineraryList, filteredItinerary, showItinModal, itinForm, submitItin, deleteItin, focusMap,
             // New for Shopping
-            shoppingList, shopForm, submitShop, toggleShop, deleteShop, shopFilter, filteredShoppingList
+            shoppingList, shopForm, submitShop, toggleShop, deleteShop, shopFilter, filteredShoppingList, toggleMyFilter, formatDate
           };
         }
       }).mount('#app');
