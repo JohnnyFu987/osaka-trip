@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <title>大阪畢業旅行小幫手</title>
-    <meta name="description" content="自動匯率換算、多人分帳，大阪畢業旅行記帳工具！">
+    <meta name="description" content="自動匯率換算、多人分帳、旅途行程，大阪畢業旅行實用小工具！">
 
     <meta property="og:type" content="website">
     <meta property="og:title" content="大阪畢業旅行小幫手">
-    <meta property="og:description" content="自動匯率換算、多人分帳，大阪畢業旅行記帳工具！">
+    <meta property="og:description" content="自動匯率換算、多人分帳、旅途行程，大阪畢業旅行實用小工具！">
     <meta property="og:image" content="https://placehold.co/1200x630/ec4899/ffffff.png?text=OSAKA+TRIP&font=montserrat">
     <meta property="og:url" content="https://johnnyfu987.github.io/osaka-trip/">
     
@@ -237,10 +237,10 @@
         </div>
 
         <div v-if="currentTab === 'schedule'" class="space-y-4">
-           <div class="flex overflow-x-auto gap-2 pb-2 no-scrollbar">
+           <div class="grid grid-cols-3 gap-2 pb-2">
              <button v-for="d in tripDates" :key="d" @click="currentDate = d"
                :class="currentDate === d ? 'bg-sky-400 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'"
-               class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors flex-shrink-0">
+               class="w-full py-2 rounded-full text-xs font-bold transition-colors">
                {{ formatDate(d) }}
              </button>
            </div>
@@ -344,7 +344,7 @@
              </div>
              <div class="grid grid-cols-2 gap-3 mt-6 relative z-10">
                <div v-for="u in users" :key="u.name" class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                 <div class="text-[10px] text-pink-100 uppercase font-bold">{{ u.name }} 應付</div>
+                 <div class="text-[10px] text-pink-100 uppercase font-bold">{{ u.name }} 花了</div>
                  <div class="font-bold text-lg font-mono">{{ Math.round(shouldPayMap[u.name] || 0).toLocaleString() }}</div>
                </div>
              </div>
