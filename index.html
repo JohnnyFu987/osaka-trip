@@ -32,6 +32,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500;700&display=swap');
       
       body { 
         font-family: 'M PLUS Rounded 1c', 'Noto Sans TC', sans-serif; 
@@ -56,9 +57,9 @@
       .pop-btn { transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
       .pop-btn:active { transform: scale(0.95); }
       
-      /* 行程表樣式 */
+      /* 行程表樣式 - 修正時間軸線位置 */
       .timeline-line {
-        position: absolute; left: 24px; top: 0; bottom: 0; width: 2px; background: #e2e8f0; z-index: 0;
+        position: absolute; left: 19px; top: 10px; bottom: 0; width: 2px; background: #cbd5e1; z-index: 0;
       }
       #osm-map { height: 280px; width: 100%; z-index: 1; }
 
@@ -82,6 +83,7 @@
         font-size: 12px; z-index: 1000; display: flex; align-items: center; gap: 8px;
         backdrop-filter: blur(4px); box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       }
+      .font-mono-time { font-family: 'Roboto Mono', monospace; }
     </style>
   </head>
   <body>
@@ -131,6 +133,7 @@
            <button @click="loadData" class="mt-2 text-xs bg-white border border-red-200 text-red-500 px-3 py-1 rounded-full font-bold shadow-sm">重試連線</button>
         </div>
 
+        <!-- 記帳 -->
         <div v-if="currentTab === 'record'" class="space-y-5">
           <div class="glass-card rounded-3xl p-5 relative overflow-hidden">
              <div class="absolute -top-10 -right-10 w-32 h-32 bg-pink-100 rounded-full opacity-50 pointer-events-none"></div>
@@ -248,6 +251,7 @@
           </div>
         </div>
 
+        <!-- 行程表 (新版 - 優化美化) -->
         <div v-if="currentTab === 'schedule'" class="space-y-4">
            <div class="grid grid-cols-3 gap-2 pb-2">
              <button v-for="d in tripDates" :key="d" @click="currentDate = d"
@@ -262,30 +266,60 @@
               <div class="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] text-gray-500 z-[999] shadow-sm font-bold">OpenStreetMap</div>
            </div>
 
-           <div class="relative pl-2">
+           <div class="relative pl-0">
+              <!-- 左側時間軸線 -->
               <div class="timeline-line"></div>
-              <div v-if="filteredItinerary.length === 0" class="text-center py-8 relative z-10">
+              
+              <div v-if="filteredItinerary.length === 0" class="text-center py-8 relative z-10 pl-12">
                  <div class="bg-gray-100 inline-block px-4 py-1 rounded-full text-xs text-gray-400">這天還沒有行程</div>
               </div>
+              
               <div v-for="(item, idx) in filteredItinerary" :key="item.id" @click="focusMap(item)"
-                  class="relative z-10 mb-4 flex gap-3 group cursor-pointer">
-                  <div class="flex flex-col items-center min-w-[48px]">
-                     <div class="text-[10px] font-bold text-gray-400 bg-white px-1 relative z-20">{{ item.startTime }}</div>
-                     <div class="w-3 h-3 rounded-full border-2 border-sky-400 bg-white mt-1 relative z-20 group-hover:bg-sky-400 transition-colors"></div>
-                  </div>
-                  <div class="flex-1 bg-white p-3 rounded-xl border border-gray-100 shadow-sm active:scale-[0.98] transition-all">
-                      <div class="flex justify-between items-start">
-                         <h4 class="font-bold text-gray-800 text-sm">{{ item.location }}</h4>
-                         <button @click.stop="deleteItin(item.id)" class="text-gray-300 hover:text-red-400"><i class="fas fa-trash-alt text-xs"></i></button>
+                  class="relative z-10 mb-5 pl-12 group cursor-pointer">
+                  
+                  <!-- 時間軸點 -->
+                  <div class="absolute left-[13px] top-6 w-3.5 h-3.5 rounded-full border-[3px] border-white bg-sky-400 shadow-sm z-20 group-hover:scale-110 group-hover:bg-sky-500 transition-all"></div>
+
+                  <!-- 卡片內容 -->
+                  <div class="bg-white rounded-[20px] p-4 shadow-sm border border-gray-100 flex gap-4 transition-all active:scale-[0.98]">
+                      
+                      <!-- 左側時間方塊 (膠囊化交通) -->
+                      <div class="flex flex-col items-center gap-2">
+                        <div class="bg-slate-50 rounded-2xl w-20 h-20 flex flex-col items-center justify-center border border-slate-100 text-slate-700 flex-shrink-0 shadow-sm">
+                            <span class="text-[10px] font-bold text-slate-400">{{ getPeriod(item.startTime) }}</span>
+                            <span class="text-2xl font-bold font-mono tracking-tighter">{{ item.startTime }}</span>
+                        </div>
+                        <!-- 交通方式 (純淨版：無多餘邊框，膠囊樣式) -->
+                        <div v-if="item.transport" class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[10px] flex items-center justify-center gap-1 w-full max-w-[80px]">
+                            <i v-if="item.transport==='train'" class="fas fa-subway text-blue-400"></i>
+                            <i v-else-if="item.transport==='walk'" class="fas fa-walking text-sky-400"></i>
+                            <i v-else-if="item.transport==='taxi'" class="fas fa-taxi text-yellow-400"></i>
+                            <i v-else-if="item.transport==='bus'" class="fas fa-bus text-green-400"></i>
+                            <span class="transform origin-left font-bold">
+                                {{ item.transport === 'walk' ? '步行' : (item.transport === 'train' ? '地鐵' : (item.transport === 'bus' ? '公車' : (item.transport === 'taxi' ? '計程車' : '交通'))) }}
+                            </span>
+                        </div>
                       </div>
-                      <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                         <i v-if="item.transport==='train'" class="fas fa-subway text-blue-400"></i>
-                         <i v-else-if="item.transport==='walk'" class="fas fa-walking text-sky-400"></i>
-                         <i v-else-if="item.transport==='taxi'" class="fas fa-taxi text-yellow-400"></i>
-                         <i v-else class="fas fa-map-marker-alt text-pink-400"></i>
-                         <span>{{ item.endTime ? item.endTime + ' 結束' : '抵達' }}</span>
+
+                      <!-- 右側資訊 (移除多餘的抵達文字) -->
+                      <div class="flex-1 py-1 min-w-0 flex flex-col justify-center">
+                          <div class="flex justify-between items-start mb-1">
+                             <h4 class="font-bold text-gray-800 text-lg leading-tight truncate pr-2">{{ item.location }}</h4>
+                             <button @click.stop="deleteItin(item.id)" class="text-gray-200 hover:text-red-400 transition-colors p-1 -mt-1 -mr-1"><i class="fas fa-trash-alt text-xs"></i></button>
+                          </div>
+                          
+                          <!-- 隱藏了原本的 "抵達 xxx" 文字 -->
+                          
+                          <!-- 備註區塊 (文字標籤化) -->
+                          <div v-if="item.note" class="mt-2 flex items-start gap-2">
+                             <span class="bg-orange-100 text-orange-500 text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">備註</span>
+                             <span class="text-xs text-gray-500 leading-relaxed break-all">{{ item.note }}</span>
+                          </div>
+                          
+                          <div v-if="item.endTime" class="mt-2 text-[10px] text-gray-400 font-mono flex items-center gap-1">
+                             <i class="fas fa-clock text-gray-300"></i> 預計 {{ item.endTime }} 結束
+                          </div>
                       </div>
-                      <div v-if="item.note" class="mt-2 text-[10px] text-gray-400 bg-gray-50 p-1.5 rounded-lg">{{ item.note }}</div>
                   </div>
               </div>
            </div>
@@ -295,13 +329,13 @@
            </button>
         </div>
 
+        <!-- 購物清單 -->
         <div v-if="currentTab === 'shopping'" class="space-y-4">
            <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
               <div class="flex items-center gap-2 mb-2">
                  <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-500"><i class="fas fa-shopping-basket"></i></div>
                  <h2 class="font-bold text-gray-700">代辦清單</h2>
               </div>
-              <!-- 修正：將輸入框與按鈕改為直向排列 (Column) 避免超出手機螢幕 -->
               <div class="flex flex-col gap-2">
                  <input type="text" v-model="shopForm.item" placeholder="想做甚麼?" class="w-full bg-gray-50 rounded-xl px-3 py-2 text-sm outline-none border border-transparent focus:border-purple-200">
                  <div class="flex gap-2">
@@ -350,6 +384,7 @@
            </div>
         </div>
 
+        <!-- 結算 -->
         <div v-if="currentTab === 'settlement'" class="space-y-5">
            <div class="bg-gradient-to-br from-pink-500 to-rose-400 text-white p-6 rounded-[2rem] shadow-xl shadow-pink-200 relative overflow-hidden">
              <i class="fas fa-plane-departure absolute -bottom-5 -right-5 text-9xl text-white opacity-10 transform -rotate-12"></i>
@@ -383,6 +418,7 @@
            </div>
         </div>
 
+        <!-- 個人 -->
         <div v-if="currentTab === 'personal'" class="space-y-5">
            <div class="glass-card rounded-[2.5rem] p-8 text-center relative mt-12 z-0">
             <div class="absolute inset-0 rounded-[2.5rem] overflow-hidden -z-10 pointer-events-none">
@@ -448,6 +484,7 @@
         </div>
       </div>
 
+      <!-- Modals -->
       <div v-if="showEditModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
         <div class="bg-white w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-y-auto p-6 relative shadow-2xl animate-[slideUp_0.3s_ease-out]">
           <button @click="showEditModal = false" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200"><i class="fas fa-times"></i></button>
@@ -537,8 +574,8 @@
       createApp({
         setup() {
           const currentTab = ref('record');
-          const isInitialLoading = ref(true); // Changed from isLoading to control initial load only
-          const isSyncing = ref(false); // New state for background sync
+          const isInitialLoading = ref(true); 
+          const isSyncing = ref(false); 
           const loadError = ref('');
           const users = ref([]); 
           const expenses = ref([]);
@@ -559,6 +596,13 @@
 
           let map = null;
           let markers = [];
+
+          // Helper: Get Morning/Afternoon
+          const getPeriod = (t) => {
+             if(!t) return '';
+             const h = parseInt(t.split(':')[0]);
+             return h < 12 ? '上午' : (h===12 ? '中午' : '下午');
+          }
 
           // Mock Data
           const getMockData = (funcName) => {
@@ -766,7 +810,6 @@
               
               const payload = { ...shopForm }; // Copy for sending
               shopForm.item = ''; 
-              // shopForm.user = ''; // Keep user selection for convenience?
               
               // 2. Server Sync
               isSyncing.value = true;
@@ -778,13 +821,11 @@
                     await runGAS('addShoppingItem', [payload]);
                 }
                 isSyncing.value = false;
-                // Ideally reload data silently to get real IDs
                 loadData(true);
               } catch (e) {
                  isSyncing.value = false;
-                 // Rollback complex logic omitted for brevity, but simple remove would work
                  Swal.fire('錯誤', '新增失敗', 'error');
-                 loadData(true); // Force reload to correct state
+                 loadData(true); 
               }
           };
 
@@ -859,7 +900,6 @@
             }
           };
 
-          // OPTIMISTIC UI: Expense Submit
           const submit = () => {
             if(!form.item || !form.unitPrice || !form.payer || form.beneficiaries.length === 0) { Swal.fire({icon: 'warning', title: '等等！', text: '資料不完整', confirmButtonColor: '#ec4899'}); return; }
             
@@ -879,33 +919,25 @@
                 note: finalNote 
             };
             
-            // 1. Optimistic Update
-            // Construct a temp expense object to show immediately
             const totalAmt = finalPrice * form.quantity;
             const tempExpense = {
-                rowId: Date.now(), // Fake ID
+                rowId: Date.now(), 
                 ...payload,
                 amount: totalAmt
             };
             expenses.value.unshift(tempExpense);
-            calculateSettlement(); // Recalculate immediately
+            calculateSettlement(); 
             
-            // Reset Form
             Swal.fire({icon:'success', title:'已記帳', timer:800, showConfirmButton:false});
             form.item = ''; form.unitPrice = ''; form.quantity = 1; form.note = '';
 
-            // 2. Send to Server Silently
             isSyncing.value = true;
             runGAS('addExpense', [payload]).then(res => {
               isSyncing.value = false;
               if(!res.success) {
-                  // Rollback
                   expenses.value = expenses.value.filter(e => e.rowId !== tempExpense.rowId);
                   calculateSettlement();
                   Swal.fire('錯誤', res.message, 'error');
-              } else {
-                  // Silent reload to sync IDs and exact server state
-                  // loadData(true); 
               }
             }).catch(e => { 
                 isSyncing.value = false;
@@ -922,9 +954,7 @@
           const toggleEditBen = (u) => { const i = editForm.beneficiaries.indexOf(u); i===-1?editForm.beneficiaries.push(u):editForm.beneficiaries.splice(i,1); };
           
           const saveEdit = () => {
-            // Optimistic Edit isn't as critical here, usually safer to wait, but let's just show loading
-            // or we could implement it if needed. For now, keep it standard to avoid complex rollback logic on edits.
-            isSyncing.value = true; // Use small sync indicator instead of full block
+            isSyncing.value = true; 
             showEditModal.value = false;
             
             runGAS('editExpense', [{...editForm, unitPrice: editForm.totalAmount, quantity: 1}]).then(res => {
@@ -936,7 +966,6 @@
           const deleteItem = (item) => {
             Swal.fire({title: '確定刪除?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: '刪除'}).then(res => {
               if(res.isConfirmed) { 
-                  // Optimistic delete
                   const originalList = [...expenses.value];
                   expenses.value = expenses.value.filter(e => e.rowId !== item.rowId);
                   calculateSettlement();
@@ -959,7 +988,7 @@
             const { value: url } = await Swal.fire({ title: '設定頭貼', input: 'text', inputLabel: '請貼上圖片網址', inputPlaceholder: 'https://...', showCancelButton: true, confirmButtonText: '儲存' });
             if (url) {
               if (!myIdentity.value) { Swal.fire('請先選擇身分', '', 'warning'); return; }
-              isSyncing.value = true; // Background sync
+              isSyncing.value = true; 
               runGAS('updateUserPhoto', [myIdentity.value, url]).then(res => {
                 isSyncing.value = false;
                 if(res.success) { Swal.fire({icon:'success', title:'頭貼已更新', timer:1500, showConfirmButton:false}); loadData(true); } else { Swal.fire('失敗', res.message, 'error'); }
@@ -967,7 +996,6 @@
             }
           };
 
-          // Settlement
           const totalTrip = ref(0); const paidMap = ref({}); const shouldPayMap = ref({}); const settlements = ref([]);
           const calculateSettlement = () => {
             let paid={}, should={}, total=0;
@@ -1010,8 +1038,7 @@
             myIdentity, saveIdentity, changePhoto, myExpenses, myInfo,
             toggleAll, toggleBen, isAllSelected, imgError, handleImgError,
             tripDates, currentDate, itineraryList, filteredItinerary, showItinModal, itinForm, submitItin, deleteItin, focusMap,
-            // New for Shopping
-            shoppingList, shopForm, submitShop, toggleShop, deleteShop, shopFilter, filteredShoppingList, formatDate
+            shoppingList, shopForm, submitShop, toggleShop, deleteShop, shopFilter, filteredShoppingList, formatDate, getPeriod
           };
         }
       }).mount('#app');
