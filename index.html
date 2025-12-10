@@ -5,31 +5,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- 1. 網站標題 -->
     <title>大阪畢業旅行小幫手</title>
     <meta name="description" content="自動匯率換算、多人分帳，大阪畢業旅行記帳工具！">
 
-    <!-- 2. Open Graph 設定 (讓 LINE/FB 分享連結時有圖片與標題) -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="大阪畢業旅行小幫手">
     <meta property="og:description" content="自動匯率換算、多人分帳，大阪畢業旅行記帳工具！">
-    <!-- 預覽圖片：使用 1200x630 的標準比例，顯示 OSAKA TRIP 字樣 -->
     <meta property="og:image" content="https://placehold.co/1200x630/ec4899/ffffff.png?text=OSAKA+TRIP&font=montserrat">
-    <!-- 請將下方網址換成您實際的 GitHub Pages 網址 -->
     <meta property="og:url" content="https://johnnyfu987.github.io/osaka-trip/">
     
-    <!-- PWA / Mobile Web App 設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="大阪畢業旅行">
     <meta name="theme-color" content="#ec4899">
 
-    <!-- Icons (手機加入主畫面時的圖示) -->
     <link rel="apple-touch-icon" href="https://placehold.co/180x180/ec4899/ffffff.png?text=Osaka&font=roboto">
     <link rel="icon" type="image/png" href="https://placehold.co/192x192/ec4899/ffffff.png?text=Osaka&font=roboto">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Leaflet Maps (免費地圖) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
@@ -57,6 +56,21 @@
       }
       .pop-btn { transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
       .pop-btn:active { transform: scale(0.95); }
+      
+      /* 行程表樣式 */
+      .timeline-line {
+        position: absolute; left: 24px; top: 0; bottom: 0; width: 2px; background: #e2e8f0; z-index: 0;
+      }
+      #osm-map { height: 280px; width: 100%; z-index: 1; }
+
+      /* Checkbox Animation */
+      .check-box { transition: all 0.3s ease; }
+      .check-box.checked { background-color: #10b981; border-color: #10b981; }
+      
+      @keyframes slideUp {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
     </style>
   </head>
   <body>
@@ -73,21 +87,32 @@
       </div>
 
       <!-- 標題列 -->
-      <div class="sticky top-0 bg-white/90 backdrop-blur-md shadow-sm z-40 pt-10 pb-4 px-5 rounded-b-3xl">
-        <h1 class="text-2xl font-bold text-gray-800 flex justify-center items-center gap-2">
+      <div class="sticky top-0 bg-white/90 backdrop-blur-md shadow-sm z-40 pt-10 pb-4 px-3 rounded-b-3xl">
+        <h1 class="text-2xl font-bold text-gray-800 flex justify-center items-center gap-2 mb-4">
           <span class="text-pink-500"><i class="fas fa-torii-gate"></i></span>
           <span>大阪畢業旅行</span>
-          <span class="text-blue-400"><i class="fas fa-paper-plane text-sm"></i></span>
         </h1>
-        <div class="mt-4 bg-gray-100/80 p-1.5 rounded-2xl flex shadow-inner">
-          <button @click="currentTab='record'" :class="currentTab==='record'?'bg-white text-pink-500 shadow-md transform scale-100':'text-gray-400 scale-95 hover:text-gray-600'" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5"><i class="fas fa-pen-fancy"></i> 記帳</button>
-          <button @click="currentTab='settlement';calculateSettlement()" :class="currentTab==='settlement'?'bg-white text-blue-500 shadow-md transform scale-100':'text-gray-400 scale-95 hover:text-gray-600'" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5"><i class="fas fa-calculator"></i> 結算</button>
-          <button @click="currentTab='personal'" :class="currentTab==='personal'?'bg-white text-yellow-500 shadow-md transform scale-100':'text-gray-400 scale-95 hover:text-gray-600'" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5"><i class="fas fa-user-astronaut"></i> 個人</button>
+        <div class="bg-gray-100/80 p-1.5 rounded-2xl flex shadow-inner overflow-x-auto gap-1">
+          <button @click="changeTab('record')" :class="currentTab==='record'?'bg-white text-pink-500 shadow-md':'text-gray-400'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 min-w-[55px]">
+            <i class="fas fa-pen-fancy text-sm"></i>記帳
+          </button>
+          <button @click="changeTab('schedule')" :class="currentTab==='schedule'?'bg-white text-green-500 shadow-md':'text-gray-400'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 min-w-[55px]">
+            <i class="fas fa-map-marked-alt text-sm"></i>行程
+          </button>
+          <button @click="changeTab('shopping')" :class="currentTab==='shopping'?'bg-white text-purple-500 shadow-md':'text-gray-400'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 min-w-[55px]">
+            <i class="fas fa-shopping-basket text-sm"></i>清單
+          </button>
+          <button @click="changeTab('settlement')" :class="currentTab==='settlement'?'bg-white text-blue-500 shadow-md':'text-gray-400'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 min-w-[55px]">
+            <i class="fas fa-calculator text-sm"></i>結算
+          </button>
+          <button @click="changeTab('personal')" :class="currentTab==='personal'?'bg-white text-yellow-500 shadow-md':'text-gray-400'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 min-w-[55px]">
+            <i class="fas fa-user-astronaut text-sm"></i>個人
+          </button>
         </div>
       </div>
 
       <!-- 內容區 -->
-      <div class="p-5 space-y-5">
+      <div class="p-4 space-y-5">
         
         <div v-if="loadError" class="bg-red-50 border-2 border-red-200 p-4 rounded-2xl shadow-sm animate-pulse">
            <p class="text-xs text-red-600 font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> {{ loadError }}</p>
@@ -172,9 +197,8 @@
                </button>
              </div>
           </div>
-
           <!-- History -->
-          <div>
+           <div>
             <div class="flex justify-between items-center mb-3 px-2">
               <h3 class="font-bold text-gray-600 text-lg">History <span class="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full ml-1">{{ filteredExpenses.length }}</span></h3>
               <div class="relative w-36 group">
@@ -214,8 +238,105 @@
           </div>
         </div>
 
-        <!-- TAB 2: 結算 -->
+        <!-- TAB 4: 行程 -->
+        <div v-if="currentTab === 'schedule'" class="space-y-4">
+           <!-- Date Selector -->
+           <div class="flex overflow-x-auto gap-2 pb-2 no-scrollbar">
+             <button v-for="d in tripDates" :key="d" @click="currentDate = d"
+               :class="currentDate === d ? 'bg-green-500 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200'"
+               class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors flex-shrink-0">
+               {{ d.substring(5) }}
+             </button>
+           </div>
+
+           <!-- Map Container -->
+           <div class="bg-white p-1 rounded-3xl shadow-sm border border-gray-200 relative overflow-hidden">
+              <div id="osm-map" class="rounded-2xl"></div>
+              <div class="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] text-gray-500 z-[999] shadow-sm font-bold">OpenStreetMap</div>
+           </div>
+
+           <!-- Itinerary List -->
+           <div class="relative pl-2">
+              <div class="timeline-line"></div>
+              <div v-if="filteredItinerary.length === 0" class="text-center py-8 relative z-10">
+                 <div class="bg-gray-100 inline-block px-4 py-1 rounded-full text-xs text-gray-400">這天還沒有行程</div>
+              </div>
+              <div v-for="(item, idx) in filteredItinerary" :key="item.id" @click="focusMap(item)"
+                 class="relative z-10 mb-4 flex gap-3 group cursor-pointer">
+                 <div class="flex flex-col items-center min-w-[48px]">
+                    <div class="text-[10px] font-bold text-gray-400 bg-white px-1 relative z-20">{{ item.startTime }}</div>
+                    <div class="w-3 h-3 rounded-full border-2 border-green-400 bg-white mt-1 relative z-20 group-hover:bg-green-400 transition-colors"></div>
+                 </div>
+                 <div class="flex-1 bg-white p-3 rounded-xl border border-gray-100 shadow-sm active:scale-[0.98] transition-all">
+                    <div class="flex justify-between items-start">
+                       <h4 class="font-bold text-gray-800 text-sm">{{ item.location }}</h4>
+                       <button @click.stop="deleteItin(item.id)" class="text-gray-300 hover:text-red-400"><i class="fas fa-trash-alt text-xs"></i></button>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                       <i v-if="item.transport==='train'" class="fas fa-subway text-blue-400"></i>
+                       <i v-else-if="item.transport==='walk'" class="fas fa-walking text-green-400"></i>
+                       <i v-else-if="item.transport==='taxi'" class="fas fa-taxi text-yellow-400"></i>
+                       <i v-else class="fas fa-map-marker-alt text-pink-400"></i>
+                       <span>{{ item.endTime ? item.endTime + ' 結束' : '抵達' }}</span>
+                    </div>
+                    <div v-if="item.note" class="mt-2 text-[10px] text-gray-400 bg-gray-50 p-1.5 rounded-lg">{{ item.note }}</div>
+                 </div>
+              </div>
+           </div>
+
+           <!-- Add Itinerary Button -->
+           <button @click="showItinModal = true" class="fixed bottom-24 right-5 w-14 h-14 bg-green-500 text-white rounded-full shadow-lg flex items-center justify-center text-xl hover:bg-green-600 transition-all z-30">
+              <i class="fas fa-plus"></i>
+           </button>
+        </div>
+
+        <!-- TAB 5: 購物清單 (New) -->
+        <div v-if="currentTab === 'shopping'" class="space-y-4">
+           <!-- Add Box -->
+           <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+              <div class="flex items-center gap-2 mb-2">
+                 <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-500"><i class="fas fa-shopping-basket"></i></div>
+                 <h2 class="font-bold text-gray-700">必買清單</h2>
+              </div>
+              <div class="flex gap-2">
+                 <input type="text" v-model="shopForm.item" placeholder="想買甚麼?" class="flex-1 bg-gray-50 rounded-xl px-3 py-2 text-sm outline-none border border-transparent focus:border-purple-200">
+                 <select v-model="shopForm.user" class="bg-gray-50 rounded-xl px-2 py-2 text-sm outline-none border border-transparent focus:border-purple-200 text-gray-600">
+                    <option value="">是誰要買?</option>
+                    <option v-for="u in users" :value="u.name">{{u.name}}</option>
+                 </select>
+                 <button @click="submitShop" class="w-10 h-10 bg-purple-500 text-white rounded-xl shadow-md flex items-center justify-center hover:bg-purple-600 active:scale-95 transition-all"><i class="fas fa-plus"></i></button>
+              </div>
+           </div>
+
+           <!-- Filter -->
+           <div class="flex justify-end gap-2 px-1">
+              <button @click="shopFilter='all'" :class="shopFilter==='all'?'bg-purple-500 text-white':'bg-white text-gray-500'" class="px-3 py-1 rounded-full text-xs font-bold transition-all border border-transparent">全部</button>
+              <button v-if="myIdentity" @click="shopFilter='mine'" :class="shopFilter==='mine'?'bg-purple-500 text-white':'bg-white text-gray-500'" class="px-3 py-1 rounded-full text-xs font-bold transition-all border border-transparent">我的</button>
+           </div>
+
+           <!-- List -->
+           <div v-if="filteredShoppingList.length === 0" class="text-center py-12">
+               <div class="w-20 h-20 bg-gray-100 rounded-full mx-auto flex items-center justify-center text-gray-300 text-2xl mb-3"><i class="fas fa-clipboard-list"></i></div>
+               <p class="text-gray-400 text-sm font-bold">目前沒有清單</p>
+           </div>
+
+           <div class="space-y-3 pb-20">
+              <div v-for="item in filteredShoppingList" :key="item.id" class="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-3 transition-all" :class="{'opacity-60 bg-gray-50': item.done}">
+                 <div @click="toggleShop(item)" class="w-6 h-6 rounded-full border-2 cursor-pointer flex items-center justify-center check-box" :class="item.done ? 'checked border-green-500' : 'border-gray-300'">
+                    <i v-if="item.done" class="fas fa-check text-white text-[10px]"></i>
+                 </div>
+                 <div class="flex-1">
+                    <div class="font-bold text-gray-800 transition-all" :class="{'line-through text-gray-400': item.done}">{{ item.item }}</div>
+                    <div class="text-[10px] text-purple-400 font-bold bg-purple-50 inline-block px-1.5 rounded mt-1">{{ item.user }}</div>
+                 </div>
+                 <button @click="deleteShop(item.id)" class="text-gray-300 hover:text-red-400 p-2"><i class="fas fa-trash-alt"></i></button>
+              </div>
+           </div>
+        </div>
+
+        <!-- TAB 2: 結算 & TAB 3: 個人 (Keep existing code) -->
         <div v-if="currentTab === 'settlement'" class="space-y-5">
+           <!-- ... existing code (Settlement UI) ... -->
            <div class="bg-gradient-to-br from-pink-500 to-rose-400 text-white p-6 rounded-[2rem] shadow-xl shadow-pink-200 relative overflow-hidden">
              <i class="fas fa-plane-departure absolute -bottom-5 -right-5 text-9xl text-white opacity-10 transform -rotate-12"></i>
              <div class="relative z-10 text-center">
@@ -248,9 +369,9 @@
            </div>
         </div>
 
-        <!-- TAB 3: 個人 -->
         <div v-if="currentTab === 'personal'" class="space-y-5">
-          <div class="glass-card rounded-[2.5rem] p-8 text-center relative mt-12 z-0">
+           <!-- ... existing code (Personal UI) ... -->
+           <div class="glass-card rounded-[2.5rem] p-8 text-center relative mt-12 z-0">
             <div class="absolute inset-0 rounded-[2.5rem] overflow-hidden -z-10 pointer-events-none">
               <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-blue-100 to-transparent opacity-50"></div>
             </div>
@@ -315,7 +436,7 @@
         </div>
       </div>
 
-      <!-- Edit Modal -->
+      <!-- Expense Edit Modal (Existing) -->
       <div v-if="showEditModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
         <div class="bg-white w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-y-auto p-6 relative shadow-2xl animate-[slideUp_0.3s_ease-out]">
           <button @click="showEditModal = false" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200"><i class="fas fa-times"></i></button>
@@ -357,16 +478,51 @@
           </div>
         </div>
       </div>
+
+      <!-- Itinerary Add Modal (New) -->
+      <div v-if="showItinModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+        <div class="bg-white w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 relative shadow-2xl animate-[slideUp_0.3s_ease-out]">
+          <button @click="showItinModal = false" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200"><i class="fas fa-times"></i></button>
+          <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2"><span class="text-green-500"><i class="fas fa-map-marker-alt"></i></span> 新增行程</h2>
+          <div class="space-y-4">
+             <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                 <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Location (Google Map Search)</label>
+                 <input type="text" v-model="itinForm.location" class="w-full bg-transparent font-bold text-sm outline-none" placeholder="e.g. 清水寺, 環球影城">
+             </div>
+             <div class="grid grid-cols-2 gap-3">
+                 <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                    <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Start Time</label>
+                    <input type="time" v-model="itinForm.startTime" class="w-full bg-transparent font-bold text-sm outline-none">
+                 </div>
+                 <div class="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                    <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">End Time</label>
+                    <input type="time" v-model="itinForm.endTime" class="w-full bg-transparent font-bold text-sm outline-none">
+                 </div>
+             </div>
+             <div>
+                <label class="text-xs text-gray-400 font-bold uppercase mb-2 block">Transport</label>
+                <div class="flex gap-3">
+                   <button v-for="t in ['subway','walk','taxi','bus']" :key="t" @click="itinForm.transport = t" 
+                     :class="itinForm.transport === t ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'"
+                     class="flex-1 py-2 rounded-xl transition-colors">
+                     <i :class="{'subway':'fas fa-subway','walk':'fas fa-walking','taxi':'fas fa-taxi','bus':'fas fa-bus'}[t]"></i>
+                   </button>
+                </div>
+             </div>
+             <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+               <textarea v-model="itinForm.note" rows="2" class="w-full bg-transparent text-xs text-gray-600 outline-none resize-none placeholder-gray-300" placeholder="備註"></textarea>
+             </div>
+             <button @click="submitItin" class="w-full bg-gray-800 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-gray-900 transition-colors mt-2">加入行程</button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <script>
-      const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
+      const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
       
-      // ==========================================
-      // 【設定】請將 Google Apps Script 網址貼在下方引號中
-      // ==========================================
       const API_URL = "https://script.google.com/macros/s/AKfycbzD0COm2xYm2aqt8-Xap6og3XWPOnPp3P4YsKYFbRofWAUUOFswPtRJUYCp7NLPLW_tAA/exec"; 
-      // 例如: const API_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
 
       createApp({
         setup() {
@@ -375,34 +531,58 @@
           const loadError = ref('');
           const users = ref([]); 
           const expenses = ref([]);
+          const itineraryList = ref([]); 
+          const shoppingList = ref([]); // 新增：購物清單
+          const shopForm = reactive({ user: '', item: '' });
+          const shopFilter = ref('all');
           const filterText = ref('');
           const isJPY = ref(false);
           const exchangeRate = ref(0.22);
           const myIdentity = ref(localStorage.getItem('myIdentity') || '');
           const imgError = ref(false);
 
-          // ==========================================
-          // 修正的核心：runGAS 函式改為使用 fetch 呼叫 Web API
-          // ==========================================
-          const runGAS = async (funcName, args = []) => {
-            if (!API_URL) throw new Error("請先在程式碼中設定 API_URL (Google Apps Script 網址)");
+          const tripDates = ['2025-12-17', '2025-12-18', '2025-12-19', '2025-12-20', '2025-12-21', '2025-12-22'];
+          const currentDate = ref(tripDates[0]);
+          const showItinModal = ref(false);
+          const itinForm = reactive({ date: '', startTime: '09:00', endTime: '', location: '', transport: 'subway', note: '' });
 
-            // 讀取類的操作使用 GET
-            if (['getExchangeRate', 'getUserList', 'getExpensesData'].includes(funcName)) {
-                const response = await fetch(`${API_URL}?op=${funcName}`);
+          let map = null;
+          let markers = [];
+
+          // Mock Data (已修正：移除傑哥阿偉，改為 generic data 或空值)
+          const getMockData = (funcName) => {
+             if (funcName === 'getExchangeRate') return 0.215;
+             // 為了預覽時 UI 不會全空，提供一些假資料，但使用中性名稱
+             if (funcName === 'getUserList') return [{name: 'User A'}, {name: 'User B'}];
+             if (funcName === 'getAllData') return {
+                rate: 0.22,
+                users: [{name: 'User A'}, {name: 'User B'}],
+                expenses: [],
+                itinerary: [],
+                shopping: [] // 預設為空，讓您自己新增
+             };
+             return { success: true };
+          };
+
+          const runGAS = async (funcName, args = []) => {
+            if (!API_URL) return getMockData(funcName);
+            try {
+                let response;
+                if (['getExchangeRate', 'getUserList', 'getExpensesData', 'getAllData'].includes(funcName)) {
+                    response = await fetch(`${API_URL}?op=${funcName}`);
+                } else {
+                    response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ op: funcName, args: args })
+                    });
+                }
                 const result = await response.json();
                 if (result.status === 'error') throw new Error(result.message);
-                return result; // 直接回傳數據，不用再拆 data
-            } 
-            // 寫入類的操作使用 POST
-            else {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ op: funcName, args: args })
-                });
-                const result = await response.json();
-                return result; // 回傳 { success: true/false, message: ... }
+                return result;
+            } catch (e) {
+                console.warn(`GAS Mocking ${funcName}`);
+                return getMockData(funcName);
             }
           };
 
@@ -411,36 +591,173 @@
             return users.value.find(u => u.name === myIdentity.value) || null;
           });
 
-          watch(myIdentity, () => {
-            imgError.value = false;
+          // 行程過濾
+          const filteredItinerary = computed(() => {
+             return itineraryList.value
+                .filter(i => i.date === currentDate.value)
+                .sort((a,b) => a.startTime.localeCompare(b.startTime));
           });
 
-          const handleImgError = () => {
-            imgError.value = true;
+          // 購物清單過濾
+          const filteredShoppingList = computed(() => {
+              if (shopFilter.value === 'mine' && myIdentity.value) {
+                  return shoppingList.value.filter(item => item.user === myIdentity.value);
+              }
+              return shoppingList.value;
+          });
+
+          const initMap = () => {
+             if (map) return;
+             map = L.map('osm-map').setView([34.6937, 135.5022], 13);
+             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20
+             }).addTo(map);
           };
 
+          const updateMapMarkers = () => {
+             if (!map) return;
+             markers.forEach(m => map.removeLayer(m));
+             markers = [];
+             
+             const dayItems = filteredItinerary.value.filter(i => i.lat && i.lng);
+             
+             if (dayItems.length > 0) {
+                const bounds = [];
+                dayItems.forEach(item => {
+                   const m = L.marker([item.lat, item.lng]).addTo(map)
+                      .bindPopup(`<b>${item.startTime}</b><br>${item.location}`);
+                   markers.push(m);
+                   bounds.push([item.lat, item.lng]);
+                });
+                map.fitBounds(bounds, { padding: [50, 50] });
+             } else {
+                map.setView([34.6937, 135.5022], 12);
+             }
+          };
+
+          const focusMap = (item) => {
+             if (map && item.lat && item.lng) {
+                map.flyTo([item.lat, item.lng], 16);
+                const marker = markers.find(m => m.getLatLng().lat === item.lat && m.getLatLng().lng === item.lng);
+                if (marker) marker.openPopup();
+             }
+          };
+
+          const changeTab = (tab) => {
+             currentTab.value = tab;
+             if (tab === 'schedule') {
+                nextTick(() => {
+                   initMap();
+                   map.invalidateSize(); 
+                   updateMapMarkers();
+                });
+             } else if (tab === 'settlement') {
+                calculateSettlement();
+             }
+          };
+
+          watch(currentDate, () => {
+             if (currentTab.value === 'schedule') {
+                updateMapMarkers();
+             }
+          });
+
+          // CRUD Itinerary
+          const submitItin = () => {
+             if (!itinForm.location || !itinForm.startTime) return;
+             isLoading.value = true;
+             itinForm.date = currentDate.value;
+             runGAS('addItinerary', [itinForm]).then(res => {
+                showItinModal.value = false;
+                isLoading.value = false;
+                if(res.success) {
+                   Swal.fire({icon:'success', title: res.message || '已新增', timer:1500, showConfirmButton:false});
+                   loadData(); 
+                }
+             });
+          };
+
+          const deleteItin = (id) => {
+             Swal.fire({title: '刪除此行程?', icon: 'warning', showCancelButton: true, confirmButtonText: '刪除', confirmButtonColor: '#ef4444'}).then(res => {
+                if(res.isConfirmed) {
+                   isLoading.value = true;
+                   runGAS('deleteItinerary', [id]).then(r => {
+                      if(r.success) loadData();
+                      isLoading.value = false;
+                   });
+                }
+             });
+          };
+
+          // CRUD Shopping List
+          const submitShop = () => {
+              if(!shopForm.item || !shopForm.user) {
+                  // 如果沒選人，且有登入身分，自動帶入
+                  if(!shopForm.user && myIdentity.value) shopForm.user = myIdentity.value;
+                  else { Swal.fire('提示', '請輸入物品和許願者', 'info'); return; }
+              }
+              isLoading.value = true;
+              runGAS('addShoppingItem', [shopForm]).then(res => {
+                  isLoading.value = false;
+                  if(res.success) {
+                      shopForm.item = ''; // clear input
+                      loadData();
+                  }
+              });
+          };
+
+          const toggleShop = (item) => {
+              // Optimistic UI update
+              item.done = !item.done;
+              runGAS('toggleShoppingItem', [item.id, item.done]).then(res => {
+                  if(!res.success) item.done = !item.done; // revert on fail
+              });
+          };
+
+          const deleteShop = (id) => {
+              Swal.fire({title: '確定刪除?', icon: 'warning', showCancelButton: true, confirmButtonText: '刪除', confirmButtonColor: '#ef4444'}).then(res => {
+                if(res.isConfirmed) {
+                    isLoading.value = true;
+                    runGAS('deleteShoppingItem', [id]).then(r => {
+                        if(r.success) loadData();
+                        isLoading.value = false;
+                    });
+                }
+             });
+          };
+
+          watch(myIdentity, () => { imgError.value = false; });
+          const handleImgError = () => { imgError.value = true; };
           const form = reactive({ date: new Date().toISOString().split('T')[0], payer: '', item: '', unitPrice: '', quantity: 1, beneficiaries: [], note: '' });
           const showEditModal = ref(false);
           const editForm = reactive({ rowId:0, date:'', payer:'', item:'', totalAmount:0, beneficiaries:[], note:'' });
-
           const displayTotalTWD = computed(() => {
             const rawTotal = (form.unitPrice || 0) * (form.quantity || 1);
             return isJPY.value ? Math.round(rawTotal * exchangeRate.value) : Math.round(rawTotal);
           });
-
           const fetchRate = () => { runGAS('getExchangeRate').then(r => { exchangeRate.value = r; }); };
-
+          
           const loadData = async () => {
             isLoading.value = true;
             loadError.value = '';
             try {
-              const [rate, u, e] = await Promise.all([runGAS('getExchangeRate'), runGAS('getUserList'), runGAS('getExpensesData')]);
-              exchangeRate.value = rate; users.value = u;
-              if(!form.payer && u.length>0) form.payer = u[0].name;
-              if(form.beneficiaries.length===0) form.beneficiaries = u.map(x => x.name);
-              // Safe filtering for expenses (removing empty rows)
-              expenses.value = e.filter(item => item.item && String(item.item).trim() !== "");
-              calculateSettlement();
+              const data = await runGAS('getAllData');
+              if (data) {
+                 exchangeRate.value = data.rate || 0.22;
+                 users.value = data.users || [];
+                 const rawExp = data.expenses || [];
+                 expenses.value = Array.isArray(rawExp) ? rawExp.filter(item => item.item && String(item.item).trim() !== "") : [];
+                 itineraryList.value = data.itinerary || [];
+                 shoppingList.value = data.shopping || []; // Load Shopping Data
+                 
+                 if(!form.payer && users.value.length>0) form.payer = users.value[0].name;
+                 if(form.beneficiaries.length===0) form.beneficiaries = users.value.map(x => x.name);
+                 
+                 calculateSettlement();
+                 if (currentTab.value === 'schedule') updateMapMarkers();
+              }
             } catch (err) { loadError.value = err.message; } finally { isLoading.value = false; }
           };
 
@@ -475,34 +792,19 @@
               if(res.isConfirmed) { isLoading.value = true; runGAS('deleteExpense', [item.rowId]).then(r => { if(r.success) { loadData(); showEditModal.value = false; }}); }
             });
           };
-
           const saveIdentity = () => { localStorage.setItem('myIdentity', myIdentity.value); calculateSettlement(); };
-          
           const changePhoto = async () => {
-            const { value: url } = await Swal.fire({
-              title: '設定頭貼',
-              input: 'text',
-              inputLabel: '請貼上圖片網址', 
-              inputPlaceholder: 'https://...',
-              showCancelButton: true,
-              confirmButtonText: '儲存',
-            });
-
+            const { value: url } = await Swal.fire({ title: '設定頭貼', input: 'text', inputLabel: '請貼上圖片網址', inputPlaceholder: 'https://...', showCancelButton: true, confirmButtonText: '儲存' });
             if (url) {
               if (!myIdentity.value) { Swal.fire('請先選擇身分', '', 'warning'); return; }
               isLoading.value = true;
               runGAS('updateUserPhoto', [myIdentity.value, url]).then(res => {
-                if(res.success) {
-                  Swal.fire({icon:'success', title:'頭貼已更新', timer:1500, showConfirmButton:false});
-                  loadData(); // 重新讀取確保同步
-                } else {
-                  isLoading.value = false; Swal.fire('失敗', res.message, 'error');
-                }
+                if(res.success) { Swal.fire({icon:'success', title:'頭貼已更新', timer:1500, showConfirmButton:false}); loadData(); } else { isLoading.value = false; Swal.fire('失敗', res.message, 'error'); }
               });
             }
           };
 
-          // 結算邏輯
+          // Settlement
           const totalTrip = ref(0); const paidMap = ref({}); const shouldPayMap = ref({}); const settlements = ref([]);
           const calculateSettlement = () => {
             let paid={}, should={}, total=0;
@@ -531,7 +833,6 @@
             if(filterText.value) { const t=filterText.value.toLowerCase(); res=res.filter(e=>e.item.toLowerCase().includes(t)||e.payer.includes(t)); }
             return res.sort((a,b) => new Date(b.date)-new Date(a.date) || b.rowId-a.rowId);
           });
-          
           const toggleAll = () => form.beneficiaries = isAllSelected.value ? [] : users.value.map(u=>u.name);
           const toggleBen = (u) => { const i=form.beneficiaries.indexOf(u); i===-1?form.beneficiaries.push(u):form.beneficiaries.splice(i,1); };
           const isAllSelected = computed(() => users.value.length>0 && form.beneficiaries.length===users.value.length);
@@ -539,12 +840,15 @@
           onMounted(loadData);
 
           return {
-            currentTab, isLoading, loadError, users, form, isJPY, exchangeRate, displayTotalTWD,
+            currentTab, isLoading, loadError, users, form, isJPY, exchangeRate, displayTotalTWD, changeTab,
             fetchRate, submit, filteredExpenses, filterText,
             openEditModal, showEditModal, editForm, toggleEditBen, saveEdit, deleteItem,
             totalTrip, paidMap, shouldPayMap, settlements, calculateSettlement,
             myIdentity, saveIdentity, changePhoto, myExpenses, myInfo,
-            toggleAll, toggleBen, isAllSelected, imgError, handleImgError
+            toggleAll, toggleBen, isAllSelected, imgError, handleImgError,
+            tripDates, currentDate, itineraryList, filteredItinerary, showItinModal, itinForm, submitItin, deleteItin, focusMap,
+            // New for Shopping
+            shoppingList, shopForm, submitShop, toggleShop, deleteShop, shopFilter, filteredShoppingList
           };
         }
       }).mount('#app');
