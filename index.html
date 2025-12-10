@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <title>大阪畢業旅行小幫手</title>
-    <meta name="description" content="自動匯率換算、多人分帳、旅途行程，大阪畢業旅行實用小工具！">
+    <meta name="description" content="自動匯率換算、多人分帳，大阪畢業旅行記帳工具！">
 
     <meta property="og:type" content="website">
     <meta property="og:title" content="大阪畢業旅行小幫手">
-    <meta property="og:description" content="自動匯率換算、多人分帳、旅途行程，大阪畢業旅行實用小工具！">
+    <meta property="og:description" content="自動匯率換算、多人分帳，大阪畢業旅行記帳工具！">
     <meta property="og:image" content="https://placehold.co/1200x630/ec4899/ffffff.png?text=OSAKA+TRIP&font=montserrat">
     <meta property="og:url" content="https://johnnyfu987.github.io/osaka-trip/">
     
@@ -74,18 +74,30 @@
         from { transform: translateY(100%); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }
       }
+      
+      /* Sync Indicator */
+      .sync-indicator {
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: rgba(0,0,0,0.7); color: white; padding: 8px 16px; border-radius: 20px;
+        font-size: 12px; z-index: 1000; display: flex; align-items: center; gap: 8px;
+        backdrop-filter: blur(4px); box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
     </style>
   </head>
   <body>
     <div id="app" class="max-w-md mx-auto min-h-screen pb-28 relative">
       
-      <div v-if="isLoading" class="loading-overlay">
+      <div v-if="isInitialLoading" class="loading-overlay">
         <div class="relative">
            <i class="fas fa-plane fa-bounce text-5xl text-pink-400 mb-4 drop-shadow-lg"></i>
            <i class="fas fa-cloud text-blue-200 absolute -top-2 -right-6 text-2xl animate-pulse"></i>
         </div>
         <span class="text-pink-500 font-bold text-lg tracking-widest mt-2">OSAKA TRIP</span>
         <span class="text-gray-400 text-xs">資料同步中...</span>
+      </div>
+      
+      <div v-if="isSyncing" class="sync-indicator transition-all duration-300">
+         <i class="fas fa-circle-notch fa-spin text-pink-300"></i> 資料雲端同步中...
       </div>
 
       <div class="sticky top-0 bg-white/90 backdrop-blur-md shadow-sm z-40 pt-10 pb-4 px-3 rounded-b-3xl">
@@ -344,7 +356,7 @@
              </div>
              <div class="grid grid-cols-2 gap-3 mt-6 relative z-10">
                <div v-for="u in users" :key="u.name" class="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                 <div class="text-[10px] text-pink-100 uppercase font-bold">{{ u.name }} 花了</div>
+                 <div class="text-[10px] text-pink-100 uppercase font-bold">{{ u.name }} 應付</div>
                  <div class="font-bold text-lg font-mono">{{ Math.round(shouldPayMap[u.name] || 0).toLocaleString() }}</div>
                </div>
              </div>
@@ -522,7 +534,8 @@
       createApp({
         setup() {
           const currentTab = ref('record');
-          const isLoading = ref(false);
+          const isInitialLoading = ref(true); // Changed from isLoading to control initial load only
+          const isSyncing = ref(false); // New state for background sync
           const loadError = ref('');
           const users = ref([]); 
           const expenses = ref([]);
@@ -670,80 +683,135 @@
              }
           });
 
-          // CRUD Itinerary
+          // OPTIMISTIC UI: Itinerary
           const submitItin = () => {
              if (!itinForm.location || !itinForm.startTime) return;
-             isLoading.value = true;
-             itinForm.date = currentDate.value;
+             
+             const tempId = Date.now().toString(); // Temporary ID
+             const newItin = { ...itinForm, id: tempId, date: currentDate.value };
+             
+             // 1. Update UI Immediately
+             itineraryList.value.push(newItin);
+             showItinModal.value = false;
+             updateMapMarkers();
+             
+             // 2. Send to Server silently
+             isSyncing.value = true;
              runGAS('addItinerary', [itinForm]).then(res => {
-                showItinModal.value = false;
-                isLoading.value = false;
-                if(res.success) {
-                   Swal.fire({icon:'success', title: res.message || '已新增', timer:1500, showConfirmButton:false});
-                   loadData(); 
+                isSyncing.value = false;
+                if(!res.success) {
+                    // Rollback if failed
+                    itineraryList.value = itineraryList.value.filter(i => i.id !== tempId);
+                    updateMapMarkers();
+                    Swal.fire('錯誤', '新增失敗，請重試', 'error');
+                } else {
+                    // Optional: Reload data to get real ID, or just trust local
+                    // loadData(true); 
                 }
+             }).catch(() => {
+                isSyncing.value = false;
+                itineraryList.value = itineraryList.value.filter(i => i.id !== tempId);
+                updateMapMarkers();
+                Swal.fire('錯誤', '連線失敗', 'error');
              });
           };
 
           const deleteItin = (id) => {
              Swal.fire({title: '刪除此行程?', icon: 'warning', showCancelButton: true, confirmButtonText: '刪除', confirmButtonColor: '#ef4444'}).then(res => {
                 if(res.isConfirmed) {
-                   isLoading.value = true;
+                   // 1. Optimistic Delete
+                   const originalList = [...itineraryList.value];
+                   itineraryList.value = itineraryList.value.filter(i => i.id !== id);
+                   updateMapMarkers();
+                   
+                   // 2. Server Sync
+                   isSyncing.value = true;
                    runGAS('deleteItinerary', [id]).then(r => {
-                      if(r.success) loadData();
-                      isLoading.value = false;
+                      isSyncing.value = false;
+                      if(!r.success) {
+                          itineraryList.value = originalList; // Rollback
+                          updateMapMarkers();
+                          Swal.fire('錯誤', '刪除失敗', 'error');
+                      }
                    });
                 }
              });
           };
 
-          // CRUD Shopping List (Updated Logic)
+          // OPTIMISTIC UI: Shopping
           const submitShop = async () => {
               if(!shopForm.item || !shopForm.user) {
                   if(!shopForm.user && myIdentity.value) shopForm.user = myIdentity.value;
                   else { Swal.fire('提示', '請輸入物品和許願者', 'info'); return; }
               }
-              isLoading.value = true;
-
+              
+              const tempItem = { 
+                  id: Date.now().toString(), 
+                  item: shopForm.item, 
+                  user: shopForm.user === 'ALL' ? 'ALL' : shopForm.user, 
+                  done: false 
+              };
+              
+              // 1. Optimistic Update
+              if (shopForm.user === 'ALL') {
+                  users.value.forEach((u, idx) => {
+                      shoppingList.value.unshift({ ...tempItem, id: tempItem.id + idx, user: u.name });
+                  });
+              } else {
+                  shoppingList.value.unshift(tempItem);
+              }
+              
+              const payload = { ...shopForm }; // Copy for sending
+              shopForm.item = ''; 
+              // shopForm.user = ''; // Keep user selection for convenience?
+              
+              // 2. Server Sync
+              isSyncing.value = true;
               try {
-                if (shopForm.user === 'ALL') {
-                    // Create for everyone
-                    const promises = users.value.map(u => {
-                        return runGAS('addShoppingItem', [{...shopForm, user: u.name}]);
-                    });
+                if (payload.user === 'ALL') {
+                    const promises = users.value.map(u => runGAS('addShoppingItem', [{...payload, user: u.name}]));
                     await Promise.all(promises);
-                    shopForm.item = ''; 
-                    shopForm.user = '';
-                    loadData();
                 } else {
-                    // Normal single add
-                    const res = await runGAS('addShoppingItem', [shopForm]);
-                    if(res.success) {
-                        shopForm.item = ''; 
-                        loadData();
-                    }
+                    await runGAS('addShoppingItem', [payload]);
                 }
+                isSyncing.value = false;
+                // Ideally reload data silently to get real IDs
+                loadData(true);
               } catch (e) {
+                 isSyncing.value = false;
+                 // Rollback complex logic omitted for brevity, but simple remove would work
                  Swal.fire('錯誤', '新增失敗', 'error');
-              } finally {
-                 isLoading.value = false;
+                 loadData(true); // Force reload to correct state
               }
           };
 
           const toggleShop = (item) => {
+              // 1. Optimistic Toggle
               item.done = !item.done;
+              
+              // 2. Server Sync
+              isSyncing.value = true;
               runGAS('toggleShoppingItem', [item.id, item.done]).then(res => {
-                  if(!res.success) item.done = !item.done; 
+                  isSyncing.value = false;
+                  if(!res.success) item.done = !item.done; // Rollback
               });
           };
 
           const deleteShop = (id) => {
               Swal.fire({title: '確定刪除?', icon: 'warning', showCancelButton: true, confirmButtonText: '刪除', confirmButtonColor: '#ef4444'}).then(res => {
                 if(res.isConfirmed) {
-                    isLoading.value = true;
+                    // 1. Optimistic Delete
+                    const originalList = [...shoppingList.value];
+                    shoppingList.value = shoppingList.value.filter(i => i.id !== id);
+                    
+                    // 2. Server Sync
+                    isSyncing.value = true;
                     runGAS('deleteShoppingItem', [id]).then(r => {
-                        if(r.success) loadData();
-                        isLoading.value = false;
+                        isSyncing.value = false;
+                        if(!r.success) {
+                            shoppingList.value = originalList;
+                            Swal.fire('錯誤', '刪除失敗', 'error');
+                        }
                     });
                 }
              });
@@ -760,8 +828,10 @@
           });
           const fetchRate = () => { runGAS('getExchangeRate').then(r => { exchangeRate.value = r; }); };
           
-          const loadData = async () => {
-            isLoading.value = true;
+          const loadData = async (silent = false) => {
+            if (!silent) isInitialLoading.value = true;
+            else isSyncing.value = true;
+            
             loadError.value = '';
             try {
               const data = await runGAS('getAllData');
@@ -779,22 +849,67 @@
                  calculateSettlement();
                  if (currentTab.value === 'schedule') updateMapMarkers();
               }
-            } catch (err) { loadError.value = err.message; } finally { isLoading.value = false; }
+            } catch (err) { loadError.value = err.message; } 
+            finally { 
+                isInitialLoading.value = false; 
+                isSyncing.value = false;
+            }
           };
 
+          // OPTIMISTIC UI: Expense Submit
           const submit = () => {
             if(!form.item || !form.unitPrice || !form.payer || form.beneficiaries.length === 0) { Swal.fire({icon: 'warning', title: '等等！', text: '資料不完整', confirmButtonColor: '#ec4899'}); return; }
-            isLoading.value = true;
+            
             let finalPrice = form.unitPrice; let finalNote = form.note;
             if (isJPY.value) {
               finalPrice = Math.round(displayTotalTWD.value / form.quantity);
               finalNote = (finalNote ? finalNote + ' ' : '') + `[JP¥${(form.unitPrice * form.quantity).toLocaleString()} @ ${exchangeRate.value}]`;
             }
-            const payload = { date: form.date, payer: form.payer, item: form.item, unitPrice: finalPrice, quantity: form.quantity, beneficiaries: [...form.beneficiaries], note: finalNote };
+
+            const payload = { 
+                date: form.date, 
+                payer: form.payer, 
+                item: form.item, 
+                unitPrice: finalPrice, 
+                quantity: form.quantity, 
+                beneficiaries: [...form.beneficiaries], 
+                note: finalNote 
+            };
+            
+            // 1. Optimistic Update
+            // Construct a temp expense object to show immediately
+            const totalAmt = finalPrice * form.quantity;
+            const tempExpense = {
+                rowId: Date.now(), // Fake ID
+                ...payload,
+                amount: totalAmt
+            };
+            expenses.value.unshift(tempExpense);
+            calculateSettlement(); // Recalculate immediately
+            
+            // Reset Form
+            Swal.fire({icon:'success', title:'已記帳', timer:800, showConfirmButton:false});
+            form.item = ''; form.unitPrice = ''; form.quantity = 1; form.note = '';
+
+            // 2. Send to Server Silently
+            isSyncing.value = true;
             runGAS('addExpense', [payload]).then(res => {
-              if(res.success) { Swal.fire({icon:'success', title:'已記帳', timer:1000, showConfirmButton:false}); loadData(); form.item = ''; form.unitPrice = ''; form.quantity = 1; form.note = ''; }
-              else { isLoading.value = false; Swal.fire('錯誤', res.message, 'error'); }
-            }).catch(e => { isLoading.value = false; Swal.fire('錯誤', e.message, 'error'); });
+              isSyncing.value = false;
+              if(!res.success) {
+                  // Rollback
+                  expenses.value = expenses.value.filter(e => e.rowId !== tempExpense.rowId);
+                  calculateSettlement();
+                  Swal.fire('錯誤', res.message, 'error');
+              } else {
+                  // Silent reload to sync IDs and exact server state
+                  // loadData(true); 
+              }
+            }).catch(e => { 
+                isSyncing.value = false;
+                expenses.value = expenses.value.filter(e => e.rowId !== tempExpense.rowId);
+                calculateSettlement();
+                Swal.fire('錯誤', e.message, 'error'); 
+            });
           };
 
           const openEditModal = (exp) => {
@@ -802,15 +917,38 @@
             showEditModal.value = true;
           };
           const toggleEditBen = (u) => { const i = editForm.beneficiaries.indexOf(u); i===-1?editForm.beneficiaries.push(u):editForm.beneficiaries.splice(i,1); };
+          
           const saveEdit = () => {
-            isLoading.value = true;
+            // Optimistic Edit isn't as critical here, usually safer to wait, but let's just show loading
+            // or we could implement it if needed. For now, keep it standard to avoid complex rollback logic on edits.
+            isSyncing.value = true; // Use small sync indicator instead of full block
+            showEditModal.value = false;
+            
             runGAS('editExpense', [{...editForm, unitPrice: editForm.totalAmount, quantity: 1}]).then(res => {
-              isLoading.value = false; showEditModal.value = false; if(res.success) loadData(); else Swal.fire('失敗', res.message, 'error');
+              isSyncing.value = false;
+              if(res.success) loadData(true); else Swal.fire('失敗', res.message, 'error');
             });
           };
+          
           const deleteItem = (item) => {
             Swal.fire({title: '確定刪除?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: '刪除'}).then(res => {
-              if(res.isConfirmed) { isLoading.value = true; runGAS('deleteExpense', [item.rowId]).then(r => { if(r.success) { loadData(); showEditModal.value = false; }}); }
+              if(res.isConfirmed) { 
+                  // Optimistic delete
+                  const originalList = [...expenses.value];
+                  expenses.value = expenses.value.filter(e => e.rowId !== item.rowId);
+                  calculateSettlement();
+                  showEditModal.value = false;
+
+                  isSyncing.value = true;
+                  runGAS('deleteExpense', [item.rowId]).then(r => { 
+                      isSyncing.value = false;
+                      if(!r.success) {
+                          expenses.value = originalList;
+                          calculateSettlement();
+                          Swal.fire('錯誤', '刪除失敗', 'error');
+                      }
+                  }); 
+                }
             });
           };
           const saveIdentity = () => { localStorage.setItem('myIdentity', myIdentity.value); calculateSettlement(); };
@@ -818,9 +956,10 @@
             const { value: url } = await Swal.fire({ title: '設定頭貼', input: 'text', inputLabel: '請貼上圖片網址', inputPlaceholder: 'https://...', showCancelButton: true, confirmButtonText: '儲存' });
             if (url) {
               if (!myIdentity.value) { Swal.fire('請先選擇身分', '', 'warning'); return; }
-              isLoading.value = true;
+              isSyncing.value = true; // Background sync
               runGAS('updateUserPhoto', [myIdentity.value, url]).then(res => {
-                if(res.success) { Swal.fire({icon:'success', title:'頭貼已更新', timer:1500, showConfirmButton:false}); loadData(); } else { isLoading.value = false; Swal.fire('失敗', res.message, 'error'); }
+                isSyncing.value = false;
+                if(res.success) { Swal.fire({icon:'success', title:'頭貼已更新', timer:1500, showConfirmButton:false}); loadData(true); } else { Swal.fire('失敗', res.message, 'error'); }
               });
             }
           };
@@ -858,10 +997,10 @@
           const toggleBen = (u) => { const i=form.beneficiaries.indexOf(u); i===-1?form.beneficiaries.push(u):form.beneficiaries.splice(i,1); };
           const isAllSelected = computed(() => users.value.length>0 && form.beneficiaries.length===users.value.length);
 
-          onMounted(loadData);
+          onMounted(() => loadData(false));
 
           return {
-            currentTab, isLoading, loadError, users, form, isJPY, exchangeRate, displayTotalTWD, changeTab,
+            currentTab, isInitialLoading, isSyncing, loadError, users, form, isJPY, exchangeRate, displayTotalTWD, changeTab,
             fetchRate, submit, filteredExpenses, filterText,
             openEditModal, showEditModal, editForm, toggleEditBen, saveEdit, deleteItem,
             totalTrip, paidMap, shouldPayMap, settlements, calculateSettlement,
