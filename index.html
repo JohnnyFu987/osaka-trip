@@ -138,13 +138,13 @@
 
         <div class="z-10 h-20 flex items-center justify-center">
            <div v-if="isInitialLoading" class="flex flex-col items-center gap-3">
-              <i class="fas fa-circle-notch fa-spin text-2xl text-pink-400"></i>
-              <span class="text-xs text-gray-500 font-bold tracking-widest animate-pulse">準備行李中...</span>
+             <i class="fas fa-circle-notch fa-spin text-2xl text-pink-400"></i>
+             <span class="text-xs text-gray-500 font-bold tracking-widest animate-pulse">準備行李中...</span>
            </div>
 
            <button v-else @click="enterSite" class="go-btn text-white text-2xl font-black italic px-12 py-4 rounded-full tracking-wider hover:opacity-90 transition-all flex items-center gap-3 group">
-              <span>LET'S GO</span>
-              <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+             <span>LET'S GO</span>
+             <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
            </button>
         </div>
 
@@ -218,8 +218,8 @@
                  </h2>
                  <div class="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
                    <div class="relative inline-block w-10 mr-1 align-middle select-none">
-                      <input type="checkbox" id="currency-toggle" v-model="isJPY" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all duration-300" :class="isJPY ? 'right-0 border-pink-400' : 'left-0 border-gray-300'"/>
-                      <label for="currency-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-200 cursor-pointer" :class="isJPY ? 'bg-pink-400' : 'bg-gray-200'"></label>
+                     <input type="checkbox" id="currency-toggle" v-model="isJPY" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all duration-300" :class="isJPY ? 'right-0 border-pink-400' : 'left-0 border-gray-300'"/>
+                     <label for="currency-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-200 cursor-pointer" :class="isJPY ? 'bg-pink-400' : 'bg-gray-200'"></label>
                    </div>
                    <span class="text-xs font-bold w-8 text-center" :class="isJPY ? 'text-pink-500' : 'text-gray-400'">{{ isJPY ? 'JPY' : 'TWD' }}</span>
                  </div>
@@ -909,7 +909,10 @@
              isSyncing.value = true;
              runGAS('addItinerary', [itinForm]).then(res => {
                 isSyncing.value = false;
-                if(!res.success) {
+                if(res.success) {
+                    // [修正] 成功後更新為正式 ID
+                    if(res.id) newItin.id = res.id;
+                } else {
                     // Rollback if failed
                     itineraryList.value = itineraryList.value.filter(i => i.id !== tempId);
                     updateMapMarkers();
@@ -979,10 +982,16 @@
                     const promises = users.value.map(u => runGAS('addShoppingItem', [{...payload, user: u.name}]));
                     await Promise.all(promises);
                 } else {
-                    await runGAS('addShoppingItem', [payload]);
+                    const res = await runGAS('addShoppingItem', [payload]);
+                    // [修正] 單人新增時，成功後更新 ID
+                    if (res.success && res.id) {
+                         tempItem.id = res.id;
+                         // 注意：如果這時候使用者又按了 ALL，因為這裡已經 await 完了，所以單人模式不需要 loadData 也可以
+                         // 但為了保險起見 (ALL 模式比較複雜)，我們下面還是保留 loadData
+                    }
                 }
                 isSyncing.value = false;
-                loadData(true);
+                loadData(true); // Shopping list re-sync is safer due to ALL user complexity
               } catch (e) {
                  isSyncing.value = false;
                  if(typeof Swal !== 'undefined') Swal.fire('錯誤', '新增失敗', 'error');
@@ -1084,7 +1093,7 @@
             
             const totalAmt = finalPrice * form.quantity;
             const tempExpense = {
-                rowId: Date.now(), 
+                rowId: Date.now(), // 這裡使用了臨時 ID
                 ...payload,
                 amount: totalAmt
             };
@@ -1097,7 +1106,13 @@
             isSyncing.value = true;
             runGAS('addExpense', [payload]).then(res => {
               isSyncing.value = false;
-              if(!res.success) {
+              if(res.success) {
+                  // [重要修正] 成功後，將後端回傳的正式 UUID 更新到這筆資料
+                  if (res.id) {
+                      tempExpense.rowId = res.id;
+                  }
+              } else {
+                  // 失敗則移除該筆資料
                   expenses.value = expenses.value.filter(e => e.rowId !== tempExpense.rowId);
                   calculateSettlement();
                   Swal.fire('錯誤', res.message, 'error');
