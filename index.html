@@ -590,7 +590,7 @@
                 <select v-model="editForm.payer" class="w-full bg-transparent font-bold text-sm outline-none"><option v-for="u in users" :value="u.name">{{u.name}}</option></select>
              </div>
              <div>
-               <label class="text-xs text-gray-400 font-bold uppercase mb-2 block">Split With</label>
+               <label class="text-xs text-gray-400 font-bold uppercase mb-2 block">受益人</label>
                <div class="flex flex-wrap gap-2">
                  <button v-for="u in users" :key="u.name" @click="toggleEditBen(u.name)"
                    :class="editForm.beneficiaries.includes(u.name) ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-500'"
