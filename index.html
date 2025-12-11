@@ -13,7 +13,7 @@
     <!-- ========================================== -->
     
     <!-- 1. 瀏覽器分頁小圖示 (Favicon) - 改為方形的 OSAKA 字樣 -->
-    <link rel="icon" type="image/png" href="https://placehold.co/192x192/ec4899/ffffff.png?text=Osaka&font=roboto">
+    <link rel="icon" href="https://placehold.co/96x96/ec4899/ffffff.png?text=OSAKA&font=montserrat">
     
     <!-- 2. 加入手機主畫面圖示 (Apple Touch Icon) - 高解析度方形圖 -->
     <link rel="apple-touch-icon" href="https://placehold.co/192x192/ec4899/ffffff.png?text=OSAKA&font=montserrat">
@@ -279,7 +279,7 @@
                  </div>
                  <div>
                    <div class="flex justify-between items-end mb-2 px-1">
-                      <label class="text-xs text-gray-400 font-bold uppercase">Split With</label>
+                      <label class="text-xs text-gray-400 font-bold uppercase">受益人</label>
                       <button @click="toggleAll" class="text-xs text-pink-500 font-bold hover:text-pink-600">{{ isAllSelected ? 'Clear' : 'Select All' }}</button>
                    </div>
                    <div class="flex flex-wrap gap-2">
@@ -1058,7 +1058,8 @@
                  shoppingList.value = data.shopping || []; 
                  
                  if(!form.payer && users.value.length>0) form.payer = users.value[0].name;
-                 if(form.beneficiaries.length===0) form.beneficiaries = users.value.map(x => x.name);
+                 // 修改：移除預設全選，讓受益人預設為空 (全關)
+                 // if(form.beneficiaries.length===0) form.beneficiaries = users.value.map(x => x.name);
                  
                  calculateSettlement();
                  if (currentTab.value === 'schedule') updateMapMarkers();
