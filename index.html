@@ -8,7 +8,22 @@
     <title>大阪畢業旅行小幫手</title>
     <meta name="description" content="自動匯率換算、多人分帳、旅程紀錄，獨屬於我們的大阪旅遊小工具！">
 
-    <!-- 1. 優化：加入 Preconnect 預先連線，加速外部資源讀取 -->
+    <!-- ========================================== -->
+    <!--  LOGO 設定區域 (已更新為 OSAKA 風格)        -->
+    <!-- ========================================== -->
+    
+    <!-- 1. 瀏覽器分頁小圖示 (Favicon) - 改為方形的 OSAKA 字樣 -->
+    <link rel="icon" href="https://placehold.co/96x96/ec4899/ffffff.png?text=OSAKA&font=montserrat">
+    
+    <!-- 2. 加入手機主畫面圖示 (Apple Touch Icon) - 高解析度方形圖 -->
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/ec4899/ffffff.png?text=OSAKA&font=montserrat">
+
+    <!-- 3. 社群分享預覽圖 (OG Image) - 您指定的長方形圖片 -->
+    <meta property="og:image" content="https://placehold.co/1200x630/ec4899/ffffff.png?text=OSAKA+TRIP&font=montserrat">
+    
+    <!-- ========================================== -->
+
+    <!-- 優化：加入 Preconnect 預先連線 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
@@ -16,8 +31,6 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="大阪畢業旅行小幫手">
     <meta property="og:description" content="自動匯率換算、多人分帳，獨屬於我們的大阪旅遊小工具！！">
-    <!-- 優化：移除可能會拖慢載入的外部 placeholder 圖片，改用純色或延遲載入 (此處保留但建議實際上線使用本地圖片) -->
-    <meta property="og:image" content="https://placehold.co/1200x630/ec4899/ffffff.png?text=OSAKA+TRIP&font=montserrat">
     <meta property="og:url" content="https://johnnyfu987.github.io/osaka-trip/">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -25,19 +38,18 @@
     <meta name="apple-mobile-web-app-title" content="大阪畢業旅行">
     <meta name="theme-color" content="#ec4899">
 
-    <!-- 2. 優化：Google Fonts 合併請求並加入 display=swap 避免阻塞 -->
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=Montserrat:wght@800;900&family=Noto+Sans+TC:wght@400;500;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
 
-    <!-- Tailwind CSS (CDN版在手機上解析較慢，實際生產環境建議編譯，但在此單檔模式下，我們加上 defer 優化) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 3. 優化：非關鍵 CSS/JS 延後載入 -->
+    <!-- 非關鍵 CSS/JS 延後載入 -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print" onload="this.media='all'" />
     
     <style>
-      /* 4. 優化：關鍵 CSS (Critical CSS) */
-      /* 這些樣式不依賴 Tailwind，確保網頁打開瞬間就有背景色和內容，不會白屏 */
+      /* 關鍵 CSS (Critical CSS) */
       body { 
         font-family: 'M PLUS Rounded 1c', 'Noto Sans TC', sans-serif; 
         background: linear-gradient(135deg, #fff1f2 0%, #e0f2fe 100%);
@@ -48,21 +60,20 @@
         margin: 0;
       }
 
-      /* 封面頁優化：確保在 JS 載入前就定型 */
+      /* 封面頁 */
       .cover-page {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: linear-gradient(150deg, #fce7f3 0%, #e0f2fe 100%);
         z-index: 9999;
         display: flex; flex-direction: column; justify-content: center; align-items: center;
         transition: transform 0.6s cubic-bezier(0.7, 0, 0.3, 1);
-        will-change: transform; /* 效能優化 */
+        will-change: transform;
       }
       .cover-page.slide-up { transform: translateY(-100%); }
       
-      /* Vue 初始化前的隱藏 */
       [v-cloak] { display: none !important; }
 
-      /* 動畫優化 */
+      /* 動畫 */
       .plane-anim { animation: fly 3s ease-in-out infinite; will-change: transform; }
       @keyframes fly {
         0%, 100% { transform: translateY(0) rotate(0deg); }
@@ -120,7 +131,7 @@
     <!-- 加入 v-cloak 避免閃爍 -->
     <div id="app" class="max-w-md mx-auto min-h-screen pb-28 relative" v-cloak>
       
-      <!-- 封面 (Cover Page) - 優化：純 HTML 內容確保即使 Vue 還在載入也能顯示基本結構 -->
+      <!-- 封面 (Cover Page) -->
       <div class="cover-page" :class="{ 'slide-up': !showCover }">
         <div class="cloud-1 text-6xl text-white"><i class="fas fa-cloud"></i></div>
         <div class="cloud-2 text-8xl text-white"><i class="fas fa-cloud"></i></div>
@@ -160,21 +171,18 @@
       <div v-if="!showCover || !isInitialLoading" class="transition-opacity duration-1000" :class="showCover ? 'opacity-0' : 'opacity-100'">
         <div class="sticky top-0 bg-white/95 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] z-40 pt-10 pb-3 px-4 rounded-b-[2.5rem] border-b border-white/60">
           
-          <!-- 優化後的標題區塊：雜誌風格排版，無動畫但有設計感 -->
+          <!-- 標題區塊 -->
           <div class="flex justify-between items-center mb-4 pl-1">
             <div>
-              <!-- 巨大的 OSAKA 標題，使用漸層色增加質感 -->
               <h1 class="text-4xl font-black text-gray-800 tracking-tighter leading-none" style="font-family: 'Montserrat', sans-serif;">
                 <span class="text-transparent bg-clip-text bg-gradient-to-br from-pink-500 to-rose-600">OSAKA</span>
               </h1>
-              <!-- 資訊小標籤 -->
               <div class="flex items-center gap-2 mt-1">
                 <span class="bg-gray-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wider">2025</span>
                 <span class="text-sm font-bold text-gray-400 tracking-widest text-[11px]">畢業旅行</span>
               </div>
             </div>
             
-            <!-- 右側裝飾性 Icon -->
             <div class="w-12 h-12 bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl flex items-center justify-center border border-pink-100 shadow-sm relative overflow-hidden group">
                 <div class="absolute inset-0 bg-pink-200 opacity-20 rounded-2xl rotate-45 transform translate-y-1/2 translate-x-1/2"></div>
                 <i class="fas fa-torii-gate text-xl text-pink-500 relative z-10"></i>
